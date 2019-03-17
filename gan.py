@@ -28,8 +28,8 @@ nc = 2  # Number of channels in the training images. For color images this is 3|
 nz = 10  # Size of z latent vector (i.e. size of generator input) |
 ngf = 2  # Size of feature maps in generator | since we generating points it is 2 (x,y)
 ndf = 2  # Size of feature maps in discriminator | since we generating points it is 2 (x,y)
-num_epochs = 88  # Number of training epochs
-lr = 0.0006  # Learning rate for optimizers
+num_epochs = 222  # Number of training epochs
+lr = 0.0005  # Learning rate for optimizers
 beta1 = 0.5  # Beta1 hyperparam for Adam optimizers
 ngpu = 0  # Number of GPUs available. Use 0 for CPU mode. | OK I got cpu only
 # Establish convention for real and fake labels during training
@@ -50,28 +50,20 @@ dataLoader = torch.utils.data.DataLoader(dataSet, batch_size=batch_size, shuffle
 # Decide which device we want to run on
 device = torch.device("cuda:0" if (torch.cuda.is_available() and ngpu > 0) else "cpu")
 problem = mygan.ProblemSize(nz, ngf, nc)
+hyperParams = mygan.HyperParameters(ngpu, lr, beta1)
 
 
 def initNet(netClass):
-    net = netClass(ngpu, problem).to(device)
+    net = netClass(hyperParams, problem).to(device)
     # Handle multi-gpu if desired
     if (device.type == 'cuda') and (ngpu > 1):
-        net = nn.DataParallel(netG, list(range(ngpu)))
-    # Apply the weights_init function to randomly initialize all weights to mean=0, stdev=0.2.
+        net = nn.DataParallel(net, list(range(ngpu)))
     net.apply(mygan.weights_init)
     print(net)  # Print the model
     return net
 
-
-def optAdam(net):
-    return optim.Adam(net.parameters(), lr=lr, betas=(beta1, 0.999))
-
-
 netG = initNet(mygan.Generator)
 netD = initNet(mygan.Discriminator)
-# Setup Adam optimizers for both G and D
-optimizerD = optAdam(netD)
-optimizerG = optAdam(netG)
 
 criterion = nn.BCELoss()  # Initialize BCELoss function
 
@@ -83,7 +75,19 @@ fixed_noise = torch.randn(256, nz, 1, 1, device=device)
 img_list = []
 G_losses = []
 D_losses = []
+rlabel = torch.full(((batch_size),), real_label, device=device)
+flabel = torch.full(((batch_size),), fake_label, device=device)
+
 iters = 0
+
+def fwdBwdError(net, input, labels):
+    # Forward pass real batch through D
+    output = net(input).view(-1)
+    # Calculate loss on all-real batch
+    err = criterion(output, labels)
+    # Calculate gradients for D in backward pass
+    err.backward()
+    return err, output.mean().item()
 
 print("Starting Training Loop...")
 # For each epoch
@@ -97,47 +101,29 @@ for epoch in range(num_epochs):
         netD.zero_grad()
         # Format batch
         bbbb = torch.from_numpy(np.column_stack((data[0], data[1]))).view(batch_size, nc, 1, 1).to(device)
-        label = torch.full(((batch_size),), real_label, device=device)
-        # Forward pass real batch through D
-        output = netD(bbbb).view(-1)
-        # Calculate loss on all-real batch
-        errD_real = criterion(output, label)
-        # Calculate gradients for D in backward pass
-        errD_real.backward()
-        D_x = output.mean().item()
+        errD_real, D_x = fwdBwdError(netD, bbbb, rlabel)
 
         ## Train with all-fake batch
         # Generate batch of latent vectors
         noise = torch.randn(batch_size, nz, 1, 1, device=device)
         # Generate fake image batch with G
         fake = netG(noise)
-        label.fill_(fake_label)
-        # Classify all fake batch with D
-        output = netD(fake.detach()).view(-1)
-        # Calculate D's loss on the all-fake batch
-        errD_fake = criterion(output, label)
-        # Calculate the gradients for this batch
-        errD_fake.backward()
-        D_G_z1 = output.mean().item()
+        # Classify all fake batch with D         # Calculate D's loss on the all-fake batch         # Calculate the gradients for this batch
+        errD_fake, D_G_z1 = fwdBwdError(netD, fake.detach(), flabel)
+
         # Add the gradients from the all-real and all-fake batches
         errD = errD_real + errD_fake
         # Update D
-        optimizerD.step()
+        netD.optimizer.step()
 
         ############################
         # (2) Update G network: maximize log(D(G(z)))
         ###########################
         netG.zero_grad()
-        label.fill_(real_label)  # fake labels are real for generator cost
         # Since we just updated D, perform another forward pass of all-fake batch through D
-        output = netD(fake).view(-1)
-        # Calculate G's loss based on this output
-        errG = criterion(output, label)
-        # Calculate gradients for G
-        errG.backward()
-        D_G_z2 = output.mean().item()
+        errG, D_G_z2 = fwdBwdError(netD, fake, rlabel)         # fake labels are real for generator cost
         # Update G
-        optimizerG.step()
+        netG.optimizer.step()
 
         # Output training stats
         if i % 50 == 0:
@@ -158,6 +144,7 @@ for epoch in range(num_epochs):
             sorted = reshape[reshape[:,0].argsort()]
             reshaped = torch.t(sorted)
             asList = reshaped.tolist()
+            plt.title("Generator: epoch " + str(epoch) + " and iteration " + str(iters))
             plt.plot(asList[0], asList[1])
 
         iters += 1
