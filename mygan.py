@@ -5,17 +5,18 @@ import torch.optim as optim
 
 
 class ProblemSize:
-    def __init__(self, latentInputLength, featureSize, channelsDepth):
+    def __init__(self, latentInputLength, featureSize, channelsDepth,  batchSize):
         self.nz = latentInputLength
         self.nf = featureSize
         self.nc = channelsDepth
+        self.batch_size = batchSize
 
 class HyperParameters:
-    def __init__(self, numberGpu, batchSize, learningRate, beta):
+    def __init__(self, numberGpu, learningRate, beta):
         self.ngpu = numberGpu
         self.lr = learningRate
         self.beta = beta
-        self.batch_size = batchSize
+
 
 
 def weights_init(m):     # Apply the weights_init function to randomly initialize all weights to mean=0, stdev=0.2.
@@ -29,9 +30,11 @@ def weights_init(m):     # Apply the weights_init function to randomly initializ
 def optAdam(netParameters, hyperParams):
     return optim.Adam(netParameters, lr=hyperParams.lr, betas=(hyperParams.beta, 0.999))
 
-
 def optRMSProp(netParameters, hyperParams):
     return optim.RMSprop(netParameters, lr=hyperParams.lr)
+
+def optSGD(netParameters, hyperParams):
+    return optim.SGD(netParameters, lr=hyperParams.lr)
 
 def num_flat_features(x):
     size = x.size()
@@ -138,7 +141,6 @@ class Discriminator(nn.Module):
             nn.Linear(problem.nf, 1),
             nn.Sigmoid()
         )
-        self.optimizer = optim.SGD(self.parameters(), hyper.lr)
 
     def forward(self, x):
         x = torch.reshape(x, (x.size(0), x.size(1)))
@@ -152,7 +154,6 @@ class Generator(nn.Module):
 
         self.main = nn.Sequential(nn.Linear(problem.nz, problem.nf), nn.Tanh(), nn.Linear(problem.nf, problem.nc))
         # self.main = nn.Linear(problem.nc, problem.nc)
-        self.optimizer = optim.SGD(self.parameters(), hyper.lr)
 
     def forward(self, x):
         x = torch.reshape(x, (x.size(0), x.size(1)))

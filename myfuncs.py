@@ -15,10 +15,12 @@ class SplicedNormCurve:
         self.vectorizeCurve = np.vectorize(self.point)
 
     def curve(self, x):
+        # piecewise = np.piecewise(x, [x < self.splicePoint, x >= self.splicePoint], [self.normal1.log_prob, self.normal2.log_prob])
+        # return torch.exp(piecewise / self.normConstant)
         return self.prob(x, self.normal1 if x < self.splicePoint else self.normal2)
 
     def prob(self, x, distr):
-        return torch.exp(distr.log_prob(x)) / self.normConstant
+        return torch.exp(distr.log_prob(x) / self.normConstant)
 
     def point(self, x):
         return x, self.curve(x)
@@ -53,6 +55,9 @@ class CurveDataset(tdata.Dataset):
     def __len__(self):
         return self.len
 
+def preprocessCurve(data):
+    return torch.from_numpy(np.column_stack((data[0], data[1])))
+
 class ProbDistrDataset(tdata.Dataset):
     def __init__(self, distr, len) -> None:
         super().__init__()
@@ -65,6 +70,9 @@ class ProbDistrDataset(tdata.Dataset):
 
     def __len__(self):
         return self.len
+
+def preprocessDistr(data):
+    return data
 
 from scipy import integrate
 
