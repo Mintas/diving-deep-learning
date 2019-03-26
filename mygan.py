@@ -18,6 +18,34 @@ class HyperParameters:
         self.beta = beta
 
 
+class Discriminator(nn.Module):
+    def __init__(self, hyper, problem):
+        super(Discriminator, self).__init__()
+        self.ngpu = hyper.ngpu
+        self.main = nn.Sequential(
+            nn.Linear(problem.nc, problem.nf),
+            nn.LeakyReLU(0.01),
+            nn.Linear(problem.nf, 1),
+            nn.Sigmoid()
+        )
+
+    def forward(self, x):
+        x = torch.reshape(x, (x.size(0), x.size(1)))
+        return self.main(x)
+
+
+class Generator(nn.Module):
+    def __init__(self, hyper, problem):
+        super(Generator, self).__init__()
+        self.ngpu = hyper.ngpu
+
+        self.main = nn.Sequential(nn.Linear(problem.nz, problem.nf), nn.Tanh(), nn.Linear(problem.nf, problem.nc))
+        # self.main = nn.Linear(problem.nc, problem.nc)
+
+    def forward(self, x):
+        x = torch.reshape(x, (x.size(0), x.size(1)))
+        return self.main(x)
+
 
 def weights_init(m):     # Apply the weights_init function to randomly initialize all weights to mean=0, stdev=0.2.
     classname = m.__class__.__name__
@@ -43,41 +71,44 @@ def num_flat_features(x):
         num_features *= s
     return num_features
 
-def _gradient_penalty(real_data, generated_data):
-    batch_size = real_data.size()[0]
+# todo : implement GP for WGAN
+# def _gradient_penalty(real_data, generated_data):
+#     batch_size = real_data.size()[0]
+#
+#     # Calculate interpolation
+#     alpha = torch.rand(batch_size, 1, 1, 1)
+#     alpha = alpha.expand_as(real_data)
+#     if self.use_cuda:
+#         alpha = alpha.cuda()
+#
+#     interpolated = alpha * real_data.data + (1 - alpha) * generated_data.data
+#     # interpolated = Variable(interpolated, requires_grad=True)
+#     if self.use_cuda:
+#         interpolated = interpolated.cuda()
+#
+#     # Calculate probability of interpolated examples
+#     prob_interpolated = self.D(interpolated)
+#
+#     # Calculate gradients of probabilities with respect to examples
+#     gradients = torch.autograd.grad(outputs=prob_interpolated, inputs=interpolated,
+#                                grad_outputs=torch.ones(prob_interpolated.size()).cuda() if self.use_cuda else torch.ones(
+#                                prob_interpolated.size()),
+#                                create_graph=True, retain_graph=True)[0]
+#
+#     # Gradients have shape (batch_size, num_channels, img_width, img_height),
+#     # so flatten to easily take norm per example in batch
+#     gradients = gradients.view(batch_size, -1)
+#     self.losses['gradient_norm'].append(gradients.norm(2, dim=1).mean().data[0])
+#
+#     # Derivatives of the gradient close to 0 can cause problems because of
+#     # the square root, so manually calculate norm and add epsilon
+#     gradients_norm = torch.sqrt(torch.sum(gradients ** 2, dim=1) + 1e-12)
+#
+#     # Return gradient penalty
+#     return self.gp_weight * ((gradients_norm - 1) ** 2).mean()
 
-    # Calculate interpolation
-    alpha = torch.rand(batch_size, 1, 1, 1)
-    alpha = alpha.expand_as(real_data)
-    if self.use_cuda:
-        alpha = alpha.cuda()
-
-    interpolated = alpha * real_data.data + (1 - alpha) * generated_data.data
-    # interpolated = Variable(interpolated, requires_grad=True)
-    if self.use_cuda:
-        interpolated = interpolated.cuda()
-
-    # Calculate probability of interpolated examples
-    prob_interpolated = self.D(interpolated)
-
-    # Calculate gradients of probabilities with respect to examples
-    gradients = torch.autograd.grad(outputs=prob_interpolated, inputs=interpolated,
-                               grad_outputs=torch.ones(prob_interpolated.size()).cuda() if self.use_cuda else torch.ones(
-                               prob_interpolated.size()),
-                               create_graph=True, retain_graph=True)[0]
-
-    # Gradients have shape (batch_size, num_channels, img_width, img_height),
-    # so flatten to easily take norm per example in batch
-    gradients = gradients.view(batch_size, -1)
-    self.losses['gradient_norm'].append(gradients.norm(2, dim=1).mean().data[0])
-
-    # Derivatives of the gradient close to 0 can cause problems because of
-    # the square root, so manually calculate norm and add epsilon
-    gradients_norm = torch.sqrt(torch.sum(gradients ** 2, dim=1) + 1e-12)
-
-    # Return gradient penalty
-    return self.gp_weight * ((gradients_norm - 1) ** 2).mean()
-
+# DCGAN, use optAdam or optRMSProp optimizers
+#
 # class Discriminator(nn.Module):
 #     def __init__(self, hyper, problem):
 #         super(Discriminator, self).__init__()
@@ -124,37 +155,7 @@ def _gradient_penalty(real_data, generated_data):
 #             nn.BatchNorm1d(self.nfx2), nn.ReLU(),
 #             nn.Linear(self.nfx2, problem.nc))
 #             #nn.Sigmoid())
-#         # self.optimizer = optAdam(self.parameters(), hyper)
-#         self.optimizer = optRMSProp(self.parameters(), hyper)
 #
 #     def forward(self, x):
 #         x = torch.reshape(x, (x.size(0), x.size(1)))
 #         return self.main(x)
-
-class Discriminator(nn.Module):
-    def __init__(self, hyper, problem):
-        super(Discriminator, self).__init__()
-        self.ngpu = hyper.ngpu
-        self.main = nn.Sequential(
-            nn.Linear(problem.nc, problem.nf),
-            nn.LeakyReLU(0.01),
-            nn.Linear(problem.nf, 1),
-            nn.Sigmoid()
-        )
-
-    def forward(self, x):
-        x = torch.reshape(x, (x.size(0), x.size(1)))
-        return self.main(x)
-
-
-class Generator(nn.Module):
-    def __init__(self, hyper, problem):
-        super(Generator, self).__init__()
-        self.ngpu = hyper.ngpu
-
-        self.main = nn.Sequential(nn.Linear(problem.nz, problem.nf), nn.Tanh(), nn.Linear(problem.nf, problem.nc))
-        # self.main = nn.Linear(problem.nc, problem.nc)
-
-    def forward(self, x):
-        x = torch.reshape(x, (x.size(0), x.size(1)))
-        return self.main(x)
