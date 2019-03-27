@@ -33,6 +33,11 @@ spread = 3
 curve = myfuncs.SplicedNormCurve(m1, m2, spread)
 curveSample = curve.sampleCurve(batch_size)
 
+# splicedDistr = myfuncs.FromCdfDistribution(curve.cdfCurve)
+# splicedDistr = myfuncs.FromPdfDistribution(curve.curve)
+# U = splicedDistr._random_state.random_sample(128000)
+# Y = splicedDistr._ppf(U)
+# dataSet = CurveDataset(128000, curve.curve, curve.interval)
 dataSet = myfuncs.ProbDistrDataset(torch.distributions.normal.Normal(0,1), 128000)
 painter = painters.HistorgramPainter(curveSample)
 dataLoader = torch.utils.data.DataLoader(dataSet, batch_size=batch_size, shuffle=True, num_workers=1)

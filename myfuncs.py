@@ -10,16 +10,27 @@ class SplicedNormCurve:
         self.normal1 = Normal(mean1, 1)
         self.normal2 = Normal(mean2, 1)
         self.splicePoint = (mean1 + mean2) / 2.0
+        self.addCdf1 = 1/2 # is equal to cdf1(splicePoint) / C
         self.normConstant = 2 * self.normal1.cdf(self.splicePoint)
+        self.substractCdf2 = self.normal2.cdf(self.splicePoint) / self.normConstant
         self.interval = torch.distributions.Uniform(mean1 - intervalWidth, mean2 + intervalWidth)
         self.vectorizeCurve = np.vectorize(self.point)
+        self.vectorizeCDF = np.vectorize(lambda x: (x, self.cdfCurve(x)))
 
     def curve(self, x):
         # piecewise = np.piecewise(x, [x < self.splicePoint, x >= self.splicePoint], [self.normal1.log_prob, self.normal2.log_prob])
         # return torch.exp(piecewise / self.normConstant)
-        return self.prob(x, self.normal1 if x < self.splicePoint else self.normal2)
+        with torch.no_grad():
+            return self.prob(x, self.normal1 if x < self.splicePoint else self.normal2)
+
+    def cdfCurve(self, x):
+        with torch.no_grad():
+            return (self.normal1.cdf(x) / self.normConstant) if x < self.splicePoint else ((self.normal2.cdf(x) / self.normConstant) + self.addCdf1 - self.substractCdf2)
 
     def prob(self, x, distr):
+        return torch.exp(distr.log_prob(x) / self.normConstant)
+
+    def cumulative(self, x, distr):
         return torch.exp(distr.log_prob(x) / self.normConstant)
 
     def point(self, x):
@@ -29,6 +40,10 @@ class SplicedNormCurve:
         sortedArguments = torch.sort(self.interval.sample((sampleSize,)))
         return self.vectorizeCurve(sortedArguments[0])
 
+    def sampleCDF(self, sampleSize):
+        sortedArguments = torch.sort(self.interval.sample((sampleSize,)))
+        return self.vectorizeCDF(sortedArguments[0])
+
 class FromPdfDistribution(rvc):
     def __init__(self, pdfunction, momtype=1, a=None, b=None, xtol=1e-14, badvalue=None, name=None, longname=None, shapes=None,
                  extradoc=None, seed=None):
@@ -37,6 +52,15 @@ class FromPdfDistribution(rvc):
 
     def _pdf(self, x, *args):
         return self.pdfunction(x)
+
+class FromCdfDistribution(rvc):
+    def __init__(self, cdfunction, momtype=1, a=None, b=None, xtol=1e-14, badvalue=None, name=None, longname=None, shapes=None,
+                 extradoc=None, seed=None):
+        super().__init__(momtype, a, b, xtol, badvalue, name, longname, shapes, extradoc, seed)
+        self.cdfunction = cdfunction
+
+    def _cdf(self, x, *args):
+        return self.cdfunction(x)
 
 
 import torch.utils.data as tdata
@@ -74,16 +98,28 @@ class ProbDistrDataset(tdata.Dataset):
 def preprocessDistr(data):
     return data
 
-from scipy import integrate
+from scipy.optimize import root
+from numpy.random import uniform
+
+def sampleCdf(cdf, num_samples, guess=1/2) :
+    seeds = uniform(0, 1, num_samples)
+    samples = []
+    for seed in seeds:
+        shifted = lambda x: cdf(x)-seed
+        soln = root(shifted, guess)
+        samples.append(soln.x[0])
+    return np.array(samples)
 
 def run():
     m1 = 0
-    m2 = 2
+    m2 = 5
     sampleSize = 1280
     spread = 3
 
     curve = SplicedNormCurve(m1, m2, spread)
     points = curve.sampleCurve(sampleSize)
+    plt.plot(points[0], points[1])
 
+    points = curve.sampleCDF(sampleSize)
     plt.plot(points[0], points[1])
     plt.show()
