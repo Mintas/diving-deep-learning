@@ -2,7 +2,17 @@ import torch
 from torch.distributions.normal import Normal
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.stats import rv_continuous as rvc
+from scipy.optimize import root
+from numpy.random import uniform
+
+def sampleCdf(cdf, num_samples, guess=1/2) :
+    seeds = uniform(0, 1, num_samples)
+    samples = []
+    for seed in seeds:
+        shifted = lambda x: cdf(x[0])-seed
+        soln = root(shifted, guess)
+        samples.append(np.float32(soln.x[0]))
+    return np.array(samples)
 
 
 class SplicedNormCurve:
@@ -28,13 +38,13 @@ class SplicedNormCurve:
             return (self.normal1.cdf(x) / self.normConstant) if x < self.splicePoint else ((self.normal2.cdf(x) / self.normConstant) + self.addCdf1 - self.substractCdf2)
 
     def prob(self, x, distr):
-        return torch.exp(distr.log_prob(x) / self.normConstant)
-
-    def cumulative(self, x, distr):
-        return torch.exp(distr.log_prob(x) / self.normConstant)
+        return torch.exp(distr.log_prob(x)) / self.normConstant
 
     def point(self, x):
         return x, self.curve(x)
+
+    def sample(self, sampleSize):
+        return sampleCdf(self.cdfCurve, sampleSize) # mb it will be nice to give splicePoint as initial guess
 
     def sampleCurve(self, sampleSize):
         sortedArguments = torch.sort(self.interval.sample((sampleSize,)))
@@ -43,24 +53,6 @@ class SplicedNormCurve:
     def sampleCDF(self, sampleSize):
         sortedArguments = torch.sort(self.interval.sample((sampleSize,)))
         return self.vectorizeCDF(sortedArguments[0])
-
-class FromPdfDistribution(rvc):
-    def __init__(self, pdfunction, momtype=1, a=None, b=None, xtol=1e-14, badvalue=None, name=None, longname=None, shapes=None,
-                 extradoc=None, seed=None):
-        super().__init__(momtype, a, b, xtol, badvalue, name, longname, shapes, extradoc, seed)
-        self.pdfunction = pdfunction
-
-    def _pdf(self, x, *args):
-        return self.pdfunction(x)
-
-class FromCdfDistribution(rvc):
-    def __init__(self, cdfunction, momtype=1, a=None, b=None, xtol=1e-14, badvalue=None, name=None, longname=None, shapes=None,
-                 extradoc=None, seed=None):
-        super().__init__(momtype, a, b, xtol, badvalue, name, longname, shapes, extradoc, seed)
-        self.cdfunction = cdfunction
-
-    def _cdf(self, x, *args):
-        return self.cdfunction(x)
 
 
 import torch.utils.data as tdata
@@ -79,15 +71,16 @@ class CurveDataset(tdata.Dataset):
     def __len__(self):
         return self.len
 
-def preprocessCurve(data):
-    return torch.from_numpy(np.column_stack((data[0], data[1])))
+    def preprocess(self, data):
+        return torch.from_numpy(np.column_stack((data[0], data[1])))
+
 
 class ProbDistrDataset(tdata.Dataset):
-    def __init__(self, distr, len) -> None:
+    def __init__(self, distr, len, preloaded=None) -> None:
         super().__init__()
         self.len = len
         self.distr = distr
-        self.xPoints = distr.sample((len,))
+        self.xPoints = preloaded if preloaded is not None else distr.sample((len,))
 
     def __getitem__(self, index):
         return self.xPoints[index]
@@ -95,20 +88,9 @@ class ProbDistrDataset(tdata.Dataset):
     def __len__(self):
         return self.len
 
-def preprocessDistr(data):
-    return data
+    def preprocess(self, data):
+        return data
 
-from scipy.optimize import root
-from numpy.random import uniform
-
-def sampleCdf(cdf, num_samples, guess=1/2) :
-    seeds = uniform(0, 1, num_samples)
-    samples = []
-    for seed in seeds:
-        shifted = lambda x: cdf(x)-seed
-        soln = root(shifted, guess)
-        samples.append(soln.x[0])
-    return np.array(samples)
 
 def run():
     m1 = 0
@@ -117,9 +99,15 @@ def run():
     spread = 3
 
     curve = SplicedNormCurve(m1, m2, spread)
+    plotPdfAndCdf(curve, sampleSize)
+
+    sampled = sampleCdf(curve.cdfCurve, 10)
+    print(sampled)
+
+
+def plotPdfAndCdf(curve, sampleSize):
     points = curve.sampleCurve(sampleSize)
     plt.plot(points[0], points[1])
-
     points = curve.sampleCDF(sampleSize)
     plt.plot(points[0], points[1])
     plt.show()

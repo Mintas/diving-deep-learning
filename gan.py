@@ -8,6 +8,7 @@ import painters
 import mygan
 import trainer
 import myfuncs
+import numpy as np
 
 # Set fixed random seed for reproducibility
 manualSeed = 999
@@ -27,18 +28,18 @@ ngpu = 0  # Number of GPUs available. Use 0 for CPU mode. | OK I got cpu only
 
 
 m1 = 0
-m2 = 0
-spread = 3
+m2 = 5
+spread = 4
 
 curve = myfuncs.SplicedNormCurve(m1, m2, spread)
 curveSample = curve.sampleCurve(batch_size)
+myfuncs.plotPdfAndCdf(curve, batch_size)
 
-# splicedDistr = myfuncs.FromCdfDistribution(curve.cdfCurve)
-# splicedDistr = myfuncs.FromPdfDistribution(curve.curve)
-# U = splicedDistr._random_state.random_sample(128000)
-# Y = splicedDistr._ppf(U)
-# dataSet = CurveDataset(128000, curve.curve, curve.interval)
-dataSet = myfuncs.ProbDistrDataset(torch.distributions.normal.Normal(0,1), 128000)
+# dataSet = myfuncs.ProbDistrDataset(torch.distributions.normal.Normal(0,1), 128000)
+preloaded = np.load('resources/norm05.npy')
+dataSet = myfuncs.ProbDistrDataset(curve, 128000, preloaded)
+# np.save('/Users/mintas/PycharmProjects/untitled1/resources/norm00', dataSet)
+
 painter = painters.HistorgramPainter(curveSample)
 dataLoader = torch.utils.data.DataLoader(dataSet, batch_size=batch_size, shuffle=True, num_workers=1)
 
@@ -57,9 +58,8 @@ def initNet(netClass):
     print(net)  # Print the model
     return net
 
-# Initialize BCELoss function
-ganTrainer = trainer.Trainer(device, problem, nn.BCELoss(),
-                             mygan.optSGD, myfuncs.preprocessDistr)
+# Initialize BCELoss function; preprocess is my own extension of torch.Dataset
+ganTrainer = trainer.Trainer(device, problem, nn.BCELoss(), mygan.optSGD, dataSet.preprocess)
 netG = initNet(mygan.Generator)
 netD = initNet(mygan.Discriminator)
 
