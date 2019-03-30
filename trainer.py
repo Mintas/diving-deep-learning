@@ -1,13 +1,59 @@
 import torch
 
-class Trainer(object):
-    def __init__(self, device, problemSize, criterion, initOptimizer, preprocessData):
-        self.G_losses = []
-        self.D_losses = []
-        self.initOptimizer = initOptimizer
+class GanLoss(object):
+    def __init__(self, device, problemSize, criterion) -> None:
         self.criterion = criterion
         self.realLabels = torch.full((problemSize.batch_size,), 1, device=device)
         self.fakeLabels = torch.full((problemSize.batch_size,), 0, device=device)
+
+    def fwdBwdError(self, D, input, labels):
+        output = D(input).view(-1) # Forward pass through D
+        loss = self.criterion(output, labels)
+        loss.backward()  # Calculate gradients
+        return output, loss
+
+    def forwardBackwardG(self, D, fake):
+        return self.fwdBwdError(D, fake, self.realLabels)
+
+    def forwardBackwardD(self, D, real, fake):
+        D_x, errD_real  = self.fwdBwdError(D, real, self.realLabels)
+
+        D_G_z1, errD_fake = self.fwdBwdError(D, fake.detach(), self.fakeLabels)
+        errD = errD_real + errD_fake
+        return D_G_z1, D_x, errD
+
+class WganLoss(object):
+    def __init__(self, problemSize, gradientPenalizer) -> None:
+        self.gradientPenalizer = gradientPenalizer
+
+    def forwardBackwardG(self, D, fake):
+        D_G_z2 = D(fake)
+        errG = - D_G_z2.mean()
+        errG.backward()
+        return D_G_z2, errG
+
+    def forwardBackwardD(self, D, real, fake):
+        D_x = D(real)
+        fake = fake.detach()
+        D_G_z1 = D(fake)
+
+        # Get gradient penalty
+        gradient_penalty = self.gradientPenalizer.calculate(D, real, fake)
+        # self.losses['GP'].append(gradient_penalty.data[0])
+
+        # Create total loss and optimize
+        errD = D_G_z1.mean() - D_x.mean() + gradient_penalty
+        errD.backward()
+        return D_G_z1, D_x, errD
+
+
+
+class Trainer(object):
+    def __init__(self, device, problemSize, ganLossCalculator, initOptimizer, preprocessData):
+        self.G_losses = []
+        self.D_losses = []
+        self.initOptimizer = initOptimizer
+        self.ganLoss = ganLossCalculator
         self.noise = lambda: torch.randn(problemSize.batch_size, problemSize.nz, 1, 1, device=device)
         self.prepare = lambda data: preprocessData(data).view(problemSize.batch_size, problemSize.nz, 1, 1).to(device)
 
@@ -20,12 +66,12 @@ class Trainer(object):
         iters = 0
         for epoch in range(num_epochs):
             for i, data in enumerate(dataLoader, 0):
-                fakeGenerated = Gen(self.noise())
-                D_G_z1, D_x, errD = self.trainDiscriminator(Dis, Dis_optimizer, data, fakeGenerated)
+                fake = Gen(self.noise())
+                D_G_z1, D_x, errD = self.trainDiscriminator(Dis, Dis_optimizer, data, fake)
                 self.D_losses.append(errD.item())
 
                 if i % 2 == 0: # extract to hyperparams as DiscriminatorPerGeneratorTrains
-                    D_G_z2, errG = self.trainGenerator(Dis, Gen, Gen_optimizer, fakeGenerated)
+                    D_G_z2, errG = self.trainGenerator(Dis, Gen, Gen_optimizer, fake)
                 self.G_losses.append(errG.item()) # when must we save G_losses
 
                 if i % 50 == 0:
@@ -46,25 +92,16 @@ class Trainer(object):
         # (1) Update D network: maximize log(D(x)) + log(1 - D(G(z)))
         real = self.prepare(data)
         Dis.zero_grad()
-        errD_real, D_x = self.fwdBwdError(Dis, real, self.realLabels)
-
-        errD_fake, D_G_z1 = self.fwdBwdError(Dis, fake.detach(), self.fakeLabels)
-        errD = errD_real + errD_fake
+        D_G_z1, D_x, errD = self.ganLoss.forwardBackwardD(Dis, real, fake)
         # Update D
         Dis_optimizer.step()
         return D_G_z1, D_x, errD
 
-    def trainGenerator(self, Dis, Gen, Gen_optimizer, fakeGenerated):
+    def trainGenerator(self, Dis, Gen, Gen_optimizer, fake):
         ############################
         # (2) Update G network: maximize log(D(G(z)))
         Gen.zero_grad()
-        errG, D_G_z2 = self.fwdBwdError(Dis, fakeGenerated, self.realLabels)
+        D_G_z2, errG  = self.ganLoss.forwardBackwardG(Dis, fake)
         # Update G
         Gen_optimizer.step()
         return D_G_z2, errG
-
-    def fwdBwdError(self, net, input, labels):
-        output = net(input).view(-1) # Forward pass through D
-        loss = self.criterion(output, labels)
-        loss.backward()  # Calculate gradients
-        return loss, output
