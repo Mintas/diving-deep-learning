@@ -48,7 +48,6 @@ class Generator(nn.Module):
         self.ngpu = hyper.ngpu
         self.type = type
         self.main = nn.Sequential(nn.Linear(problem.nz, problem.nf), nn.Tanh(), nn.Linear(problem.nf, problem.nc))
-        # self.main = nn.Linear(problem.nc, problem.nc)
 
     def forward(self, x):
         x = torch.reshape(x, (x.size(0), x.size(1)))
@@ -79,40 +78,47 @@ def num_flat_features(x):
         num_features *= s
     return num_features
 
-# todo : implement GP for WGAN
+
 class GradientPenalizer :
-    def __init__(self, gpWeight, useCuda=False) -> None:
+    def __init__(self, gpWeight, trackProgress=True, useCuda=False) -> None:
         self.useCuda = useCuda
         self.gpWeight = gpWeight
-
+        self.trackProgress = trackProgress
+        self.penalties = []
+        self.norms = []
 
     def calculate(self, D, real, fake):
         # Calculate interpolation
         real = torch.reshape(real, (real.size(0), real.size(1)))
         alpha = torch.rand(real.size())
-        # if self.use_cuda:
-        #     alpha = alpha.cuda()
+        if self.useCuda:
+            alpha = alpha.cuda()
         interpolated = alpha * real.requires_grad_(True) + (1 - alpha) * fake.requires_grad_(True)
-        # if self.use_cuda:
-        #     interpolated = interpolated.cuda()
+        if self.useCuda:
+            interpolated = interpolated.cuda()
 
         # Calculate probability of interpolated examples
         prob_interpolated = D(interpolated)
 
         # Calculate gradients of probabilities with respect to examples
+        ones = torch.ones(prob_interpolated.size())
         gradients = torch.autograd.grad(outputs=prob_interpolated, inputs=interpolated,
-                                        grad_outputs=torch.ones(prob_interpolated.size()),
-                                        # .cuda() if self.use_cuda else torch.ones(prob_interpolated.size()),
+                                        grad_outputs=ones.cuda() if self.useCuda else ones,
                                         create_graph=True, retain_graph=True)[0]
 
         # Gradients have shape (batch_size, num_channels, img_width, img_height), so flatten to easily take norm per example in batch
         gradients = gradients.view(real.size(0), -1)
-        # self.losses['gradient_norm'].append(gradients.norm(2, dim=1).mean().data[0])
 
         # Derivatives of the gradient close to 0 can cause problems because of the square root, so manually calculate norm and add epsilon
         gradients_norm = torch.sqrt(torch.sum(gradients ** 2, dim=1) + 1e-12)
-        # Return gradient penalty
-        return self.gpWeight * ((gradients_norm - 1) ** 2).mean()
+        if self.trackProgress:
+            self.norms.append(gradients.norm(2, dim=1).mean().item())
+
+        # Return gradient petrackProgress=Truenalty
+        penalty = self.gpWeight * ((gradients_norm - 1) ** 2).mean()
+        if self.trackProgress:
+            self.penalties.append(penalty.item())
+        return penalty
 
 
 

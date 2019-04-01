@@ -14,6 +14,16 @@ def plotLosses(G_losses, D_losses):
     plt.legend()
     plt.show()
 
+def plotGradPenalties(penalties, norms):
+    plt.figure()
+    plt.title("Gradient Penalties and Norms During Training")
+    plt.plot(penalties, label="P")
+    plt.plot(norms, label="N")
+    plt.xlabel("iterations")
+    plt.ylabel("Value")
+    plt.legend()
+    plt.show()
+
 # for 1D arrays, distrubitions
 class HistorgramPainter():
     def __init__(self, curveSample = None, maxBins = 50):

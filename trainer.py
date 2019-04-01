@@ -39,8 +39,6 @@ class WganLoss(object):
 
         # Get gradient penalty
         gradient_penalty = self.gradientPenalizer.calculate(D, real, fake)
-        # self.losses['GP'].append(gradient_penalty.data[0])
-
         # Create total loss and optimize
         errD = D_G_z1.mean() - D_x.mean() + gradient_penalty
         errD.backward()
