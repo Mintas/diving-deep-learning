@@ -32,10 +32,8 @@ class HistorgramPainter():
 
     def plot(self, fake, data, epoch, iters):
         fake = fake.reshape(fake.size(0))
-
         ranges = [min(min(fake), min(data)), max(max(fake), max(data))]
-        binWidth = (ranges[1] - ranges[0]) / self.maxBins
-        bins = np.arange(ranges[0], ranges[1] + binWidth, binWidth)
+        bins = self.calcBins(ranges)
 
         _, ax = plt.subplots()
         plt.title("Generator: epoch " + str(epoch) + " and iteration " + str(iters))
@@ -45,15 +43,38 @@ class HistorgramPainter():
             plt.plot(self.curveSample[0], self.curveSample[1])
         plt.show()
 
+    def plotFake(self, fake, epoch, iters):
+        fake = fake.reshape(fake.size(0)).detach()
+        ranges = [min(fake), max(fake)]
+        bins = self.calcBins(ranges)
+        _, ax = plt.subplots()
+        plt.title("Generator: epoch " + str(epoch) + " and iteration " + str(iters))
+        ax.hist(fake, bins=bins, alpha=1, density=True, label='fake generated')
+        if self.curveSample :
+            plt.plot(self.curveSample[0], self.curveSample[1])
+        plt.show()
+
+    def calcBins(self, ranges):
+        binWidth = (ranges[1] - ranges[0]) / self.maxBins
+        bins = np.arange(ranges[0], ranges[1] + binWidth, binWidth)
+        return bins
+
+
 #  for 2D arrays, curves
 class CurvePainter():
-    def plotHist(self, fake, data, epoch, iters):
-        reshape = fake.reshape((fake.size(0), fake.size(1)))
+    def plot(self, fake, data, epoch, iters):
+        self.doPlotFake(epoch, fake, iters)
+        plt.plot(np.sort(data[0]), data[1][np.argsort(data[0])].numpy(), label="sampledBatch")
+        plt.show()
 
+    def plotFake(self, fake, epoch, iters):
+        self.doPlotFake(epoch, fake, iters)
+        plt.show()
+
+    def doPlotFake(self, epoch, fake, iters):
+        reshape = fake.reshape((fake.size(0), fake.size(1)))
         sorted = reshape[reshape[:, 0].argsort()]
         reshaped = torch.t(sorted)
         asList = reshaped.tolist()
         plt.title("Generator: epoch " + str(epoch) + " and iteration " + str(iters))
         plt.plot(asList[0], asList[1], label="FromNoise")
-        plt.plot(np.sort(data[0]), data[1][np.argsort(data[0])].numpy(), label="sampledBatch")
-        plt.show()

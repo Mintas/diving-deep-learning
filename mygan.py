@@ -8,6 +8,7 @@ import torch.optim as optim
 class GANS :
     GAN = 'GAN'
     WGAN = 'WGAN'
+    CRAMER = 'CRAMER'
 
 class ProblemSize:
     def __init__(self, latentInputLength, featureSize, channelsDepth,  batchSize):
@@ -31,7 +32,9 @@ class Discriminator(nn.Module):
         self.main = nn.Sequential(
             nn.Linear(problem.nc, problem.nf),
             nn.LeakyReLU(0.01),
-            nn.Linear(problem.nf, 1)
+            nn.Linear(problem.nf, problem.nf*2), nn.LeakyReLU(0.01),
+            nn.Linear(problem.nf*2, problem.nf*4), nn.LeakyReLU(0.01),
+            nn.Linear(problem.nf*4, 1)
         )
 
     def forward(self, x):
@@ -47,7 +50,13 @@ class Generator(nn.Module):
         super(Generator, self).__init__()
         self.ngpu = hyper.ngpu
         self.type = type
-        self.main = nn.Sequential(nn.Linear(problem.nz, problem.nf), nn.Tanh(), nn.Linear(problem.nf, problem.nc))
+        # self.main = nn.Sequential(nn.Linear(problem.nz, problem.nf), nn.Tanh(), nn.Linear(problem.nf, problem.nc))
+        self.main = nn.Sequential(
+            nn.Linear(problem.nz, problem.nf), nn.ReLU(),
+            nn.Linear(problem.nf, problem.nf * 2), nn.ReLU(),
+            nn.Linear(problem.nf * 2, problem.nf * 4), nn.ReLU(),
+            nn.Linear(problem.nf * 4, problem.nc)
+        )
 
     def forward(self, x):
         x = torch.reshape(x, (x.size(0), x.size(1)))
