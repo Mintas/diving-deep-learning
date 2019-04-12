@@ -54,7 +54,7 @@ class Generator(nn.Module):
         self.main = nn.Sequential(
             nn.Linear(problem.nz, problem.nf), nn.ReLU(),
             nn.Linear(problem.nf, problem.nf * 2), nn.ReLU(),
-            nn.Linear(problem.nf * 2, problem.nf * 4), nn.ReLU(),
+            nn.Linear(problem.nf * 2, problem.nf * 4), nn.Tanh(), # for CramerGan Tanh shown almost same learnability, fastly detecting more modes, need more comparison to ReLU
             nn.Linear(problem.nf * 4, problem.nc)
         )
 

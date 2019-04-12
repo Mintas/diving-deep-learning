@@ -8,6 +8,7 @@ import painters
 import mygan
 import trainer
 import myfuncs
+import myfuncsnew
 import numpy as np
 
 # Set fixed random seed for reproducibility
@@ -27,20 +28,23 @@ beta1 = 0.5  # Beta1 hyperparam for Adam optimizers
 ngpu = 0  # Number of GPUs available. Use 0 for CPU mode. | OK I got cpu only
 gpWeight = 0.7 # which is good gpWeight? somehow 0.1 is nice, 1 is so so, 10 is bad, 0.01 is vanishing
 type = mygan.GANS.CRAMER
-initOptimizer = mygan.optRMSProp
+initOptimizer = mygan.optRMSProp # works almost as well for SGD and lr = 0.03
 
 m1 = 0
 m2 = 7
 spread = 4
 
-curve = myfuncs.SplicedNormCurve(m1, m2, spread)
+curve = myfuncsnew.SplicedNormCurveMany([m1,m2, 14], spread)
 curveSample = curve.sampleCurve(batch_size)
 myfuncs.plotPdfAndCdf(curve, batch_size)
 
+
+# dataSet = curve.sample((128000,))
+# np.save('/Users/mintas/PycharmProjects/untitled1/resources/norm0714', dataSet)
+
 # dataSet = myfuncs.ProbDistrDataset(torch.distributions.normal.Normal(0,1), 128000)
-preloaded = np.load('resources/norm07.npy')
+preloaded = np.load('resources/norm0714.npy')
 dataSet = myfuncs.ProbDistrDataset(curve, 128000, preloaded)
-# np.save('/Users/mintas/PycharmProjects/untitled1/resources/norm00', dataSet)
 
 painter = painters.HistorgramPainter(curveSample)
 dataLoader = torch.utils.data.DataLoader(dataSet, batch_size=batch_size, shuffle=True, num_workers=1)
