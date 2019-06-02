@@ -89,7 +89,7 @@ class ProbDistrDataset(tdata.Dataset):
         return self.len
 
     def preprocess(self, data):
-        return data
+        return data #torch.reshape(data, (data.size(0), data.size(1)))
 
 
 def run():

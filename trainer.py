@@ -90,14 +90,14 @@ class Trainer(object):
         self.ganLoss = ganLossCalculator
         self.problemSize = problemSize
         self.device = device
-        self.prepare = lambda data: preprocessData(data).view(problemSize.batch_size, problemSize.nz, 1, 1).to(device)
+        self.prepare = lambda data: preprocessData(data).view(problemSize.batch_size, problemSize.nc, problemSize.imgSize, problemSize.imgSize)
 
-    def noise(self, noiseSize=None):
-        size = noiseSize if noiseSize is not None else self.problemSize.batch_size
-        return torch.randn(size, self.problemSize.nz, 1, 1, device=self.device)
+    def noise(self, noiseCount=None):
+        count = noiseCount if noiseCount is not None else self.problemSize.batch_size
+        return torch.randn(count, self.problemSize.nz, 1, 1, device=self.device)
 
-    def train(self, Dis, Gen, dataLoader, num_epochs, hyperParams, painter=None, fixedNoiseSize=None):
-        fixed_noise = self.noise(fixedNoiseSize)
+    def train(self, Dis, Gen, dataLoader, num_epochs, hyperParams, painter=None, fixedNoiseCount=None):
+        fixed_noise = self.noise(fixedNoiseCount)
         Dis_optimizer = self.initOptimizer(Dis.parameters(), hyperParams)
         Gen_optimizer = self.initOptimizer(Gen.parameters(), hyperParams)
         datasetLength = len(dataLoader)
@@ -106,21 +106,21 @@ class Trainer(object):
         for epoch in range(num_epochs):
             for i, data in enumerate(dataLoader, 0):
                 fake = [Gen(self.noise()) for i in range(0, self.ganLoss.needFakes)]
-                real = self.prepare(data)
+                real = self.prepare(data).to(self.device)
                 D_G_z1, D_x, errD = self.trainDiscriminator(Dis, Dis_optimizer, real, fake)
                 self.D_losses.append(errD.item())
 
-                if i % 2 == 0: # extract to hyperparams as DiscriminatorPerGeneratorTrains
-                    D_G_z2, errG = self.trainGenerator(Dis, Gen, Gen_optimizer, real, fake)
+                #if i % 2 == 0: # extract to hyperparams as DiscriminatorPerGeneratorTrains
+                D_G_z2, errG = self.trainGenerator(Dis, Gen, Gen_optimizer, real, fake)
                 self.G_losses.append(errG.item()) # when must we save G_losses
 
-                if i % 50 == 0:
+                if i % 10 == 0:
                     print('[%d/%d][%d/%d]\tLoss_D: %.4f\tLoss_G: %.4f\tD(x): %.4f\tD(G(z)): %.4f / %.4f'
                           % (epoch, num_epochs, i, datasetLength,
                              errD.item(), errG.item(), D_x.mean().item(), D_G_z1.mean().item(), D_G_z2.mean().item()))
 
                 # Check how the generator is doing by saving G's output on fixed_noise
-                if painter and (iters % 500 == 0) or ((epoch == num_epochs - 1) and (i == datasetLength - 1)):
+                if painter and (iters % 50 == 0) or ((epoch == num_epochs - 1) and (i == datasetLength - 1)):
                     with torch.no_grad():
                         fake = Gen(fixed_noise).detach().cpu()
                     painter.plot(fake, data, epoch, iters)

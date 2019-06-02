@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import torch
 import numpy as np
-from IPython.display import HTML
+import analytic_funcs as AF
 
 def plotLosses(G_losses, D_losses):
     plt.figure()
@@ -78,3 +78,16 @@ class CurvePainter():
         asList = reshaped.tolist()
         plt.title("Generator: epoch " + str(epoch) + " and iteration " + str(iters))
         plt.plot(asList[0], asList[1], label="FromNoise")
+
+# for ECal responses
+class ECalPainter():
+    def __init__(self, plotUi):
+        self.plotUi = plotUi
+
+    def plot(self, fake, data, epoch, iters):
+        self.plotFake(fake, epoch, iters)
+
+    def plotFake(self, fake, epoch, iters):
+        plt.suptitle("Generator: epoch " + str(epoch) + " and iteration " + str(iters))
+        fake = fake.view(fake.size(0), fake.size(2), fake.size(3))
+        self.plotUi.toView(lambda: AF.plotResponses(fake, fake.size(0), [], False))

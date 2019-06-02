@@ -1,7 +1,7 @@
 import torch
 from torch.distributions.normal import Normal
 import numpy as np
-import myfuncs
+import curvesAndDistributions
 import matplotlib.pyplot as plt
 from scipy.optimize import root
 from numpy.random import uniform
@@ -54,7 +54,7 @@ class SplicedNormCurveMany:
         return x, self.curve(x)
 
     def sample(self, sampleSize):
-        return myfuncs.sampleCdf(self.cdfCurve, sampleSize) # mb it will be nice to give splicePoint as initial guess
+        return curvesAndDistributions.sampleCdf(self.cdfCurve, sampleSize) # mb it will be nice to give splicePoint as initial guess
 
     def sampleCurve(self, sampleSize):
         sortedArguments = torch.sort(self.interval.sample((sampleSize,)))
