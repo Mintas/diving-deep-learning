@@ -84,8 +84,16 @@ class CramerGanLoss(object):
         return self.norm(x, y) - torch.norm(x, p=2, dim=-1)
 
 
+class Debugg(object):
+    def __init__(self, print, plot, save) -> None:
+        self.print = print
+        self.plot = plot
+        self.save = save
+
+
+
 class Trainer(object):
-    def __init__(self, device, problemSize, ganLossCalculator, initOptimizer, preprocessData, path=''):
+    def __init__(self, device, problemSize, ganLossCalculator, initOptimizer, preprocessData, path='', debugg=Debugg(5, 25, 1)):
         self.G_losses = []
         self.D_losses = []
         self.initOptimizer = initOptimizer
@@ -93,6 +101,7 @@ class Trainer(object):
         self.problemSize = problemSize
         self.device = device
         self.path = path
+        self.debugg = debugg
         self.prepare = lambda data: preprocessData(data).view(problemSize.batch_size, problemSize.nc, problemSize.imgSize, problemSize.imgSize)
 
     def noise(self, noiseCount=None):
@@ -126,19 +135,20 @@ class Trainer(object):
                 D_G_z2, errG = self.trainGenerator(Dis, Gen, Gen_optimizer, real, fake)
                 self.G_losses.append(errG.item()) # when must we save G_losses
 
-                if i % 5 == 0:
+                if i % self.debugg.print == 0:
                     print('[%d/%d][%d/%d]\tLoss_D: %.4f\tLoss_G: %.4f\tD(x): %.4f\tD(G(z)): %.4f / %.4f'
                           % (epoch, num_epochs, i, datasetLength,
                              errD.item(), errG.item(), D_x.mean().item(), D_G_z1.mean().item(), D_G_z2.mean().item()))
 
                 # Check how the generator is doing by saving G's output on fixed_noise
-                if painter and (iters % 25 == 0) or ((epoch == num_epochs + computedEpochs) and (i == datasetLength - 1)):
+                if painter and (iters % self.debugg.plot == 0) or ((epoch == num_epochs + computedEpochs) and (i == datasetLength - 1)):
                     with torch.no_grad():
                         fake = Gen(fixed_noise).detach().cpu()
                     painter.plot(fake, data, epoch, iters)
 
                 iters += 1
-            iogan.saveGAN(epoch, fixed_noise, Dis, Dis_optimizer, self.D_losses, Gen, Gen_optimizer, self.G_losses, self.path)
+            if epoch % self.debugg.save == 0:
+                iogan.saveGAN(epoch, fixed_noise, Dis, Dis_optimizer, self.D_losses, Gen, Gen_optimizer, self.G_losses, self.path)
 
         return Dis_optimizer, Gen_optimizer
 
