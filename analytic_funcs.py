@@ -24,14 +24,17 @@ def plotLogResponse(img, logScale):
     plt.ylabel('cell Y')
 
 
-def plotResponses(real_imgs, count, real_p, logScale=True):
+def plotResponses(ecalData, logScale=True, fakeData = None):
     matplotlib.rcParams.update({'font.size': 14})
-    for i in range(count):
+    for i in range(4):
         #print("im:", i)
         #print("momentum", real_p[i])
         # print ("fake", fake_p[i])
-        plt.subplot(521 + i)  # todo : how to update this correctly ?
-        plotLogResponse(real_imgs[i], logScale)
+        plt.subplot(521 + 2*i)  # todo : how to update this correctly ?
+        plotLogResponse(ecalData.response[i], logScale)
+        plt.subplot(521 + 2*i+1)  # todo : how to update this correctly ?
+        asFake = fakeData.response[i] if fakeData is not None else ecalData.response[-i]
+        plotLogResponse(asFake, logScale)
 
 
 def newline(p1, p2):      # функция отрисовки прямой
@@ -86,25 +89,27 @@ def get_assymetry(data, ps, points, orthog=False):   # асимметрия ли
     return assym_res
 
 
-def plotAssymetry(real_imgs, real_p, real_point, orto):
-    assymetry_real = get_assymetry(real_imgs, real_p, real_point, orto)
+def plotAssymetry(ecalData, orto, fakeData = None):
+    assymetry_real = get_assymetry(ecalData.response, ecalData.momentum, ecalData.point, orto)
     plt.hist(assymetry_real, bins=50, range=[-1, 1], color='red', alpha=0.3, density=True, label='Geant')
-    # plt.hist(assymetry_fake, bins=50, range=[-1, 1], color='blue', alpha=0.3, density=True, label='GAN');
+    if fakeData is not None:
+        plt.hist(get_assymetry(fakeData.response, fakeData.momentum, fakeData.point, orto),
+                 bins=50, range=[-1, 1], color='blue', alpha=0.3, density=True, label='GAN')
     plt.xlabel(('Longitudual' if orto else 'Transverse') + ' cluster asymmetry')
     plt.legend(loc='best')
     #plt.show()
     return assymetry_real
 
 
-def get_shower_width(data, ps, points, orthog=False):      # ширина ливня вдоль и поперек направления
+def get_shower_width(response, momentum, points, orthog=False):      # ширина ливня вдоль и поперек направления
     spreads = []
     x = np.linspace(-14.5, 14.5, 30)
     y = np.linspace(-14.5, 14.5, 30)
     x_ = np.linspace(-14.5, 14.5, 100)
 
-    for i in range(min(10000, len(data))):
-        img = data[i]
-        p = ps[i]
+    for i in range(min(10000, len(response))):
+        img = response[i]
+        p = momentum[i]
         point = points[i]
 
         line_func = lineFunc(orthog, point, p)
@@ -138,11 +143,14 @@ def get_shower_width(data, ps, points, orthog=False):      # ширина лив
     return spreads
 
 
-def plotShowerWidth(real_imgs, real_p, real_point, orto):
-    shower_width_real_direct = get_shower_width(real_imgs, real_p, real_point, orto)
+def plotShowerWidth(ecalData, orto, fakeData = None):
     matplotlib.rcParams.update({'font.size': 14})
+
+    shower_width_real_direct = get_shower_width(ecalData.response, ecalData.momentum, ecalData.point, orto)
     plt.hist(shower_width_real_direct, bins=50, range=[0, 15], density=True, alpha=0.3, color='red', label='Geant')
-    # plt.hist(shower_width_fake_direct, bins=50, range=[0, 15], density=True, alpha=0.3, color='blue', label='GAN');
+
+    if fakeData is not None:
+        plt.hist(get_shower_width(fakeData.response, fakeData.momentum, fakeData.point, orto), bins=50, range=[0, 15], density=True, alpha=0.3, color='blue', label='GAN');
     plt.legend(loc='best')
     plt.xlabel(('Longitudual' if orto else 'Transverse') + ' cluster width [cm]')
     plt.ylabel('Arbitrary units')
@@ -158,36 +166,43 @@ def get_ms_ratio2(img, ps, alpha=0.1):
     return num / 900.
 
 
-def computeSparsity(real_imgs, real_p, alpha):
+def computeSparsity(response, momentum, alpha):
     sparsity = []
-    for i in range(min(3000, len(real_imgs))):
+    for i in range(min(3000, len(response))):
         v_r = []
         for a in alpha:
-            v_r.append(get_ms_ratio2(real_imgs[i], real_p[i], pow(10, a)))
+            v_r.append(get_ms_ratio2(response[i], momentum[i], pow(10, a)))
         sparsity.append(v_r)
     return np.array(sparsity)
 
-def doPlotSparsity(means, stddev, alpha):
-    matplotlib.rcParams.update({'font.size': 14})
+def doPlotSparsity(sparsity, alpha, color='red'):
+    means = np.mean(sparsity, axis=0)
+    stddev = np.std(sparsity, axis=0)
     plt.plot(alpha, means, color='red')
-    plt.fill_between(alpha, means - stddev, means + stddev, color='red', alpha=0.3)
+    plt.fill_between(alpha, means - stddev, means + stddev, color=color, alpha=0.3)
     #plt.plot(alpha, means_f, color='blue')
     #plt.fill_between(alpha, means_f - stddev_f, means_f + stddev_f, color='blue', alpha=0.3)
-    plt.legend(['Geant']) #, 'GAN'])
+
+
+
+def plotSparsity(ecalData, fakeData=None):
+    matplotlib.rcParams.update({'font.size': 14})
+    # alpha = np.linspace(0, 0.02, 100)
+    alpha = np.linspace(-5, 0, 50)
+
+    sparsity = computeSparsity(ecalData.response, ecalData.momentum, alpha)
+    doPlotSparsity(sparsity, alpha)
+    legend = ['Geant']
+    if fakeData is not None:
+        fs = computeSparsity(fakeData.response, fakeData.momentum, alpha)
+        doPlotSparsity(fs, alpha, color='blue')
+        legend.append('GAN')
+
+    plt.legend(legend)
     plt.title('Sparsity')
     plt.xlabel('log10(Threshold/GeV)')
     plt.ylabel('Fraction of cells above threshold')
 
-
-def plotSparsity(real_imgs, real_p):
-    # alpha = np.linspace(0, 0.02, 100)
-    alpha = np.linspace(-5, 0, 50)
-
-    sparsity = computeSparsity(real_imgs, real_p, alpha)
-    means_r = np.mean(sparsity, axis=0)
-    stddev_r = np.std(sparsity, axis=0)
-
-    doPlotSparsity(means_r, stddev_r, alpha)
 
 
 class ShowPlotUi():
@@ -215,43 +230,53 @@ class PDFPlotUi():
     def close(self):
         self.pdf.close()
 
+class EcalData :
+    def __init__(self, response, momentum, point, title='') -> None:
+        self.response = response
+        self.momentum = momentum
+        self.point = point
+        self.title = title
 
-def runAnalytics(filename):
+def parseEcalData(filename):
     ecal = np.load('ecaldata/' + filename + '.npz')
     ecal.keys()
     real_imgs = ecal['EnergyDeposit']
     real_p = ecal['ParticleMomentum']
     real_point = ecal['ParticlePoint']
-
-    plotUi = PDFPlotUi('computed/' + filename + '.pdf')  # ShowPlotUi()
-
     title = 'EnergyDeposit  shape: ' + str(real_imgs.shape) + \
             '\n min: ' + str(real_imgs.min()) + '\t max: ' + str(real_imgs.max()) + \
             '\n first particle Momentum :  ' + str(real_p[0]) + \
             '\n Point :' + str(real_point[0]) + \
             '\n particle type is : ' + str(ecal['ParticlePDG'][0])
-    print(title)
+    return EcalData(real_imgs, real_p, real_point, title)
 
-    plotUi.toView(lambda: plotMeanWithTitle(real_imgs, title))
+def runAnalytics(filename, fakeData=None):
+    ecalData = parseEcalData(filename)
+    print(ecalData.title)
 
-    plotUi.toView(lambda: plotResponses(real_imgs, 9, real_p))
-    plotUi.toView(lambda: plotResponses(real_imgs, 9, real_p, False))
+    plotUi = PDFPlotUi('computed/' + filename + '_generated' if fakeData is not None else '' + '.pdf')  # ShowPlotUi()
 
-    plotUi.toView(lambda: plotAssymetry(real_imgs, real_p, real_point, False))
-    plotUi.toView(lambda: plotAssymetry(real_imgs, real_p, real_point, True))
 
-    plotUi.toView(lambda: plotShowerWidth(real_imgs, real_p, real_point, False))
-    plotUi.toView(lambda: plotShowerWidth(real_imgs, real_p, real_point, True))
+    plotUi.toView(lambda: plotMeanWithTitle(ecalData.response, ecalData.title))
+    if fakeData is not None :
+        print(fakeData.title)
+        plotUi.toView(lambda: plotMeanWithTitle(fakeData.response, fakeData.title))
 
-    plotUi.toView(lambda: plotSparsity(real_imgs, real_p))
+    plotUi.toView(lambda: plotResponses(ecalData, fakeData=fakeData))
+    plotUi.toView(lambda: plotResponses(ecalData, False, fakeData))
+
+    plotUi.toView(lambda: plotAssymetry(ecalData, False, fakeData))
+    plotUi.toView(lambda: plotAssymetry(ecalData, True, fakeData))
+
+    plotUi.toView(lambda: plotShowerWidth(ecalData, False, fakeData))
+    plotUi.toView(lambda: plotShowerWidth(ecalData, True, fakeData))
+
+    plotUi.toView(lambda: plotSparsity(ecalData, fakeData))
 
     plotUi.close()
 
 
 def run():
     #runAnalytics('caloGAN_v3_case5_2K')
-    runAnalytics('caloGAN_v3_case4_2K')
-    runAnalytics('caloGAN_v3_case3_2K')
-    runAnalytics('caloGAN_v3_case2_50K')
-    runAnalytics('caloGAN_v3_case1_50K')
+    runAnalytics('caloGAN_v3_case4_2K', fakeData=parseEcalData('caloGAN_v3_case5_2K'))
 
