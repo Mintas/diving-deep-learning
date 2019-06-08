@@ -99,18 +99,20 @@ def trainGan():
     ui.close()
 
 def evalGan():
-    iogan.loadGANs(netD, netG, ganFile)
-    netG.eval(), netD.eval()
+    with torch.no_grad():
+        iogan.loadGANs(netD, netG, ganFile)
+        netG.eval(), netD.eval()
 
-    ecalData = AF.parseEcalData(datasetName)
+        ecalData = AF.parseEcalData(datasetName)
 
-    shape = ecalData.response.shape
-    print(shape)
+        shape = ecalData.response.shape
+        print(shape)
 
-    tonnsOfNoise = torch.randn(shape[0], nz, 1, 1, device)
-    generated = netG(tonnsOfNoise)
-    fakeData = AF.EcalData(generated, ecalData.momentum, ecalData.point)
+        tonnsOfNoise = torch.randn(shape[0], nz, 1, 1, device)
+        generated = netG(tonnsOfNoise)
+        responses = generated.reshape(shape).cpu().detach().numpy()
+        fakeData = AF.EcalData(responses, ecalData.momentum, ecalData.point)
 
-    AF.runAnalytics(datasetName, fakeData)
+        AF.runAnalytics(datasetName, ecalData, fakeData)
 
 
