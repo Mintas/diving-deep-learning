@@ -9,7 +9,7 @@ from scipy.interpolate import interp2d
 
 
 def plotMean(imgs):
-    plt.imshow(np.mean(imgs, axis=0))  # средняя картинка по реальному датасету
+    plt.imshow(np.mean(imgs, axis=0, keepdims=False))  # средняя картинка по реальному датасету
     plt.colorbar()
 
 def plotMeanWithTitle(imgs, title):
