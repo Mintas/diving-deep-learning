@@ -250,8 +250,8 @@ def parseEcalData(filename):
             '\n particle type is : ' + str(ecal['ParticlePDG'][0])
     return EcalData(real_imgs, real_p, real_point, title)
 
-def runAnalytics(filename, fakeData=None):
-    ecalData = parseEcalData(filename)
+def runAnalytics(filename, ecalData, fakeData=None):
+    if ecalData is None : ecalData = parseEcalData(filename)
     print(ecalData.title)
 
     plotUi = PDFPlotUi('computed/' + filename + '_generated' if fakeData is not None else '' + '.pdf')  # ShowPlotUi()
@@ -278,5 +278,6 @@ def runAnalytics(filename, fakeData=None):
 
 def run():
     #runAnalytics('caloGAN_v3_case5_2K')
-    runAnalytics('caloGAN_v3_case4_2K', fakeData=parseEcalData('caloGAN_v3_case5_2K'))
+    dataset = 'caloGAN_v3_case4_2K'
+    runAnalytics(dataset, ecalData = parseEcalData(dataset), fakeData=parseEcalData('caloGAN_v3_case5_2K'))
 

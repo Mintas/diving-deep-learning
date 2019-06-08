@@ -37,3 +37,9 @@ def loadGAN(D, Dopt, G, Gopt, PATH):
     DL = checkpoint[IOGANConst.DLoss]
     GL = checkpoint[IOGANConst.GLoss]
     return checkpoint[IOGANConst.Epoch], DL, GL, checkpoint[IOGANConst.FixedNoise]
+
+def loadGANs(D, G, PATH):
+    checkpoint = torch.load(PATH)
+
+    D.load_state_dict(checkpoint[IOGANConst.D])
+    G.load_state_dict(checkpoint[IOGANConst.G])

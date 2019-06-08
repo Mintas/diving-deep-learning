@@ -9,6 +9,7 @@ import mygan
 import architectures.dcgan02062019 as myzoo
 import trainer
 import numpy as np
+import iogan
 
 import analytic_funcs as AF
 
@@ -34,7 +35,6 @@ initOptimizer = mygan.optRMSProp # works almost as well for SGD and lr = 0.03
 
 # dataSet = myfuncs.ProbDistrDataset(torch.distributions.normal.Normal(0,1), 128000)
 datasetName = 'electrons_1_100_5D_v3_50K'
-ecalData = np.load('ecaldata/%s.npz' % datasetName)
 archVersion = 'dcgan02062019' #arch version
 ganFile = 'computed/%s_%s.pth' % (datasetName, archVersion)
 pdfFile = 'computed/%s_%s' % (datasetName, archVersion) #pdf is added in PDFPlotUi
@@ -46,8 +46,7 @@ pdfFile = 'computed/%s_%s' % (datasetName, archVersion) #pdf is added in PDFPlot
 # ParticlePDG=ecal['ParticlePDG']  #here we got only vector with constant 22
 
 
-dataSet = torch.utils.data.TensorDataset(torch.from_numpy(ecalData['EnergyDeposit']).float())
-dataLoader = torch.utils.data.DataLoader(dataSet, batch_size=batch_size, shuffle=True, num_workers=1)
+
 
 # Decide which device we want to run on
 device = torch.device("cuda:0" if (torch.cuda.is_available() and ngpu > 0) else "cpu")
@@ -64,24 +63,54 @@ def initNet(netClass):
     print(net)  # Print the model
     return net
 
-lossCalculator = trainer.GanLoss(device, problem, nn.BCELoss()) if type == mygan.GANS.GAN \
-    else (trainer.WganLoss if type == mygan.GANS.WGAN else trainer.CramerGanLoss)(problem, mygan.GradientPenalizer(gpWeight, True, ngpu > 0))
 
-ganTrainer = trainer.Trainer(device, problem, lossCalculator, initOptimizer, lambda d: d[0], ganFile)
 netG = initNet(myzoo.GenEcal)
 netD = initNet(myzoo.DiscEcal)
 
 print(netG)
 print(netD)
 
-ui = AF.PDFPlotUi(pdfFile)
-painter = painters.ECalPainter(ui)
-print("Starting Training Loop...")
-dopt, gopt = ganTrainer.train(netD, netG, dataLoader, num_epochs, hyperParams, painter, 9)
-#painter.plotFake(netG.forward(torch.randn(128000, nz, 1, 1, device=device)), num_epochs, 0)
 
-painters.plotLosses(ganTrainer.G_losses, ganTrainer.D_losses)
-if type != mygan.GANS.GAN :
-    painters.plotGradPenalties(ganTrainer.ganLoss.gradientPenalizer.penalties, ganTrainer.ganLoss.gradientPenalizer.norms)
+def trainGan():
+    ecalData = np.load('ecaldata/%s.npz' % datasetName)
 
-ui.close()
+    dataSet = torch.utils.data.TensorDataset(torch.from_numpy(ecalData['EnergyDeposit']).float())
+    dataLoader = torch.utils.data.DataLoader(dataSet, batch_size=batch_size, shuffle=True, num_workers=1)
+
+    lossCalculator = trainer.GanLoss(device, problem, nn.BCELoss()) if type == mygan.GANS.GAN \
+        else (trainer.WganLoss if type == mygan.GANS.WGAN else trainer.CramerGanLoss)(problem,
+                                                                                      mygan.GradientPenalizer(gpWeight,
+                                                                                                              True,
+                                                                                                              ngpu > 0))
+
+    ganTrainer = trainer.Trainer(device, problem, lossCalculator, initOptimizer, lambda d: d[0], ganFile)
+
+    ui = AF.PDFPlotUi(pdfFile)
+    painter = painters.ECalPainter(ui)
+    print("Starting Training Loop...")
+    dopt, gopt = ganTrainer.train(netD, netG, dataLoader, num_epochs, hyperParams, painter, 9)
+    # painter.plotFake(netG.forward(torch.randn(128000, nz, 1, 1, device=device)), num_epochs, 0)
+
+    painters.plotLosses(ganTrainer.G_losses, ganTrainer.D_losses)
+    if type != mygan.GANS.GAN:
+        painters.plotGradPenalties(ganTrainer.ganLoss.gradientPenalizer.penalties,
+                                   ganTrainer.ganLoss.gradientPenalizer.norms)
+
+    ui.close()
+
+def evalGan():
+    iogan.loadGANs(netD, netG, ganFile)
+    netG.eval(), netD.eval()
+
+    ecalData = AF.parseEcalData(datasetName)
+
+    shape = ecalData.response.shape
+    print(shape)
+
+    tonnsOfNoise = torch.randn(shape[0], nz, 1, 1, device)
+    generated = netG(tonnsOfNoise)
+    fakeData = AF.EcalData(generated, ecalData.momentum, ecalData.point)
+
+    AF.runAnalytics(datasetName, fakeData)
+
+
