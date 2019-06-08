@@ -23,7 +23,7 @@ imgSize = 1
 nz = 1 # Size of z latent vector (i.e. size of generator input) |
 ngf = 24  # Size of feature maps in generator | since we generating points it is 2 (x,y)
 ndf = 24  # Size of feature maps in discriminator | since we generating points it is 2 (x,y)
-num_epochs = 500  # Number of training epochs
+num_epochs = 5  # Number of training epochs
 lr = 0.0003  # Learning rate for optimizers | 0.04 is good for SGD and 0.0001 for RMSProp
 beta1 = 0.5  # Beta1 hyperparam for Adam optimizers
 ngpu = 0  # Number of GPUs available. Use 0 for CPU mode. | OK I got cpu only
@@ -69,7 +69,7 @@ def initNet(netClass):
 lossCalculator = trainer.GanLoss(device, problem, nn.BCELoss()) if type == mygan.GANS.GAN \
     else (trainer.WganLoss if type == mygan.GANS.WGAN else trainer.CramerGanLoss)(problem, mygan.GradientPenalizer(gpWeight, True, ngpu > 0))
 
-ganTrainer = trainer.Trainer(device, problem, lossCalculator, initOptimizer, dataSet.preprocess)
+ganTrainer = trainer.Trainer(device, problem, lossCalculator, initOptimizer, dataSet.preprocess, 'resources/norm07142030.pth')
 netG = initNet(mygan.Generator)
 netD = initNet(mygan.Discriminator)
 

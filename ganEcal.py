@@ -6,6 +6,7 @@ import torch.nn as nn
 import torch.utils.data
 import painters
 import mygan
+import architectures.dcgan02062019 as myzoo
 import trainer
 import numpy as np
 
@@ -17,7 +18,7 @@ print("Random Seed: ", manualSeed)
 random.seed(manualSeed)
 torch.manual_seed(manualSeed)
 
-batch_size = 200  # Batch size during training
+batch_size = 500  # Batch size during training
 nc = 1  # we got 1channel response
 nz = 42 # latent space size | 42 is close to hypotenuse of response 30x30
 imgSize = 30  # our respons is 30x30
@@ -27,13 +28,17 @@ num_epochs = 50  # 5 for example, need much more for learning
 lr = 0.0003  # Learning rate for optimizers | 0.04 is good for SGD and 0.0001 for RMSProp
 beta1 = 0.5  # Beta1 hyperparam for Adam optimizers
 ngpu = 0  # increase for GPU hosted calculations
-gpWeight = 0.7 # gradient penalty weight; somehow 0.1 is nice, 1 is so so, 10 is bad, 0.01 is vanishing
-type = mygan.GANS.CRAMER # we are going to try gan, wgan-gp and cramerGan
+gpWeight = 0.5 # gradient penalty weight; somehow 0.1 is nice, 1 is so so, 10 is bad, 0.01 is vanishing
+type = mygan.GANS.WGAN # we are going to try gan, wgan-gp and cramerGan
 initOptimizer = mygan.optRMSProp # works almost as well for SGD and lr = 0.03
 
 # dataSet = myfuncs.ProbDistrDataset(torch.distributions.normal.Normal(0,1), 128000)
-#ecalData = np.load('resources/electrons_1_100_5D_v3_50K.npz')
-ecalData = np.load('ecaldata/caloGAN_v3_case4_2K.npz')
+datasetName = 'electrons_1_100_5D_v3_50K'
+ecalData = np.load('ecaldata/%s.npz' % datasetName)
+archVersion = 'dcgan02062019' #arch version
+ganFile = 'computed/%s_%s.pth' % (datasetName, archVersion)
+pdfFile = 'computed/%s_%s' % (datasetName, archVersion) #pdf is added in PDFPlotUi
+#ecalData = np.load('ecaldata/caloGAN_v3_case4_2K.npz')
 
 # EnergyDeposit = ecal['EnergyDeposit']
 # ParticlePoint = ecal['ParticlePoint']
@@ -59,22 +64,24 @@ def initNet(netClass):
     print(net)  # Print the model
     return net
 
-# !!! preprocess is my own extension of torch.Dataset
 lossCalculator = trainer.GanLoss(device, problem, nn.BCELoss()) if type == mygan.GANS.GAN \
     else (trainer.WganLoss if type == mygan.GANS.WGAN else trainer.CramerGanLoss)(problem, mygan.GradientPenalizer(gpWeight, True, ngpu > 0))
 
-ganTrainer = trainer.Trainer(device, problem, lossCalculator, initOptimizer, lambda d: d[0])
-netG = initNet(mygan.GenEcal)
-netD = initNet(mygan.DiscEcal)
+ganTrainer = trainer.Trainer(device, problem, lossCalculator, initOptimizer, lambda d: d[0], ganFile)
+netG = initNet(myzoo.GenEcal)
+netD = initNet(myzoo.DiscEcal)
 
 print(netG)
 print(netD)
 
-painter = painters.ECalPainter(AF.ShowPlotUi())
+ui = AF.PDFPlotUi(pdfFile)
+painter = painters.ECalPainter(ui)
 print("Starting Training Loop...")
-ganTrainer.train(netD, netG, dataLoader, num_epochs, hyperParams, painter, 9)
+dopt, gopt = ganTrainer.train(netD, netG, dataLoader, num_epochs, hyperParams, painter, 9)
 #painter.plotFake(netG.forward(torch.randn(128000, nz, 1, 1, device=device)), num_epochs, 0)
 
 painters.plotLosses(ganTrainer.G_losses, ganTrainer.D_losses)
 if type != mygan.GANS.GAN :
     painters.plotGradPenalties(ganTrainer.ganLoss.gradientPenalizer.penalties, ganTrainer.ganLoss.gradientPenalizer.norms)
+
+ui.close()

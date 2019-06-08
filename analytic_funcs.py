@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import matplotlib.lines as mlines
 import matplotlib.backends.backend_pdf as pltpdf
 import matplotlib
+import os
 from scipy.interpolate import interp2d
 ##include math
 
@@ -200,7 +201,11 @@ class ShowPlotUi():
 
 class PDFPlotUi():
     def __init__(self, pdfFile) -> None:
-        self.pdf = matplotlib.backends.backend_pdf.PdfPages(pdfFile)
+        i = 0
+        while (os.path.isfile(pdfFile + '.pdf')) :
+            i = i + 1
+            pdfFile = pdfFile + '_' + str(i)
+        self.pdf = matplotlib.backends.backend_pdf.PdfPages(pdfFile + '.pdf')
 
     def toView(self, plot):
         fig = plt.figure(figsize=(10, 10))
