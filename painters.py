@@ -87,7 +87,11 @@ class ECalPainter():
     def plot(self, fake, data, epoch, iters):
         self.plotFake(fake, epoch, iters)
 
+    class Response():
+        def __init__(self, fake) -> None:
+            self.response = fake
+
     def plotFake(self, fake, epoch, iters):
         plt.suptitle("Generator: epoch " + str(epoch) + " and iteration " + str(iters))
-        fake = fake.view(fake.size(0), fake.size(2), fake.size(3))
+        fake = self.Response(fake.view(fake.size(0), fake.size(2), fake.size(3)))
         self.plotUi.toView(lambda: AF.plotResponses(fake, False))
