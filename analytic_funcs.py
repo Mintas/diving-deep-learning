@@ -217,10 +217,11 @@ class ShowPlotUi():
 class PDFPlotUi():
     def __init__(self, pdfFile) -> None:
         i = 0
-        while (os.path.isfile(pdfFile + '.pdf')) :
+        lookupNextName = pdfFile
+        while (os.path.isfile(lookupNextName + '.pdf')) :
             i = i + 1
-            pdfFile = pdfFile + '_' + str(i)
-        self.pdf = matplotlib.backends.backend_pdf.PdfPages(pdfFile + '.pdf')
+            lookupNextName = pdfFile + '_' + str(i)
+        self.pdf = matplotlib.backends.backend_pdf.PdfPages(lookupNextName + '.pdf')
 
     def toView(self, plot):
         fig = plt.figure(figsize=(10, 10))

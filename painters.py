@@ -5,24 +5,24 @@ import numpy as np
 import analytic_funcs as AF
 
 def plotLosses(G_losses, D_losses):
-    plt.figure()
+    #plt.figure()
     plt.title("Generator and Discriminator Loss During Training")
     plt.plot(G_losses, label="G")
     plt.plot(D_losses, label="D")
     plt.xlabel("iterations")
     plt.ylabel("Loss")
     plt.legend()
-    plt.show()
+    #plt.show()
 
 def plotGradPenalties(penalties, norms):
-    plt.figure()
+    #plt.figure()
     plt.title("Gradient Penalties and Norms During Training")
     plt.plot(penalties, label="P")
     plt.plot(norms, label="N")
     plt.xlabel("iterations")
     plt.ylabel("Value")
     plt.legend()
-    plt.show()
+    #plt.show()
 
 # for 1D arrays, distrubitions
 class HistorgramPainter():
