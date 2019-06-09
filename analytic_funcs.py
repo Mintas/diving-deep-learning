@@ -178,7 +178,7 @@ def computeSparsity(response, momentum, alpha):
 def doPlotSparsity(sparsity, alpha, color='red'):
     means = np.mean(sparsity, axis=0)
     stddev = np.std(sparsity, axis=0)
-    plt.plot(alpha, means, color='red')
+    plt.plot(alpha, means, color=color)
     plt.fill_between(alpha, means - stddev, means + stddev, color=color, alpha=0.3)
     #plt.plot(alpha, means_f, color='blue')
     #plt.fill_between(alpha, means_f - stddev_f, means_f + stddev_f, color='blue', alpha=0.3)
@@ -240,6 +240,10 @@ class EcalData :
 def parseEcalData(filename):
     ecal = np.load('ecaldata/' + filename + '.npz')
     ecal.keys()
+    return dictToEcalData(ecal)
+
+
+def dictToEcalData(ecal):
     real_imgs = ecal['EnergyDeposit']
     real_p = ecal['ParticleMomentum']
     real_point = ecal['ParticlePoint']
@@ -249,6 +253,7 @@ def parseEcalData(filename):
             '\n Point :' + str(real_point[0]) + \
             '\n particle type is : ' + str(ecal['ParticlePDG'][0])
     return EcalData(real_imgs, real_p, real_point, title)
+
 
 def runAnalytics(filename, ecalData, fakeData=None):
     if ecalData is None : ecalData = parseEcalData(filename)
@@ -261,6 +266,11 @@ def runAnalytics(filename, ecalData, fakeData=None):
     if fakeData is not None :
         print(fakeData.title)
         plotUi.toView(lambda: plotMeanWithTitle(fakeData.response, fakeData.title))
+
+        if (ecalData.response.shape[0] == fakeData.response.shape[0]) :
+            plt.imshow(abs(np.mean(ecalData.response, axis=0, keepdims=False) - np.mean(fakeData.response, axis=0, keepdims=False)))
+            plt.colorbar()
+            plt.show()
 
     plotUi.toView(lambda: plotResponses(ecalData, fakeData=fakeData))
     plotUi.toView(lambda: plotResponses(ecalData, False, fakeData))

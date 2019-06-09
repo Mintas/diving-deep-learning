@@ -91,10 +91,11 @@ def trainGan():
     dopt, gopt = ganTrainer.train(netD, netG, dataLoader, num_epochs, hyperParams, painter, 9)
     # painter.plotFake(netG.forward(torch.randn(128000, nz, 1, 1, device=device)), num_epochs, 0)
 
-    painters.plotLosses(ganTrainer.G_losses, ganTrainer.D_losses)
+    ui.toView(lambda: painters.plotLosses(ganTrainer.G_losses, ganTrainer.D_losses))
+
     if type != mygan.GANS.GAN:
-        painters.plotGradPenalties(ganTrainer.ganLoss.gradientPenalizer.penalties,
-                                   ganTrainer.ganLoss.gradientPenalizer.norms)
+        ui.toView(lambda: painters.plotGradPenalties(ganTrainer.ganLoss.gradientPenalizer.penalties,
+                                   ganTrainer.ganLoss.gradientPenalizer.norms))
 
     ui.close()
 
