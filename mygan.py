@@ -9,6 +9,7 @@ class GANS :
     GAN = 'GAN'
     WGAN = 'WGAN'
     CRAMER = 'CRAMER'
+    ECRAMER = 'ECRAMER'
 
 class ProblemSize:
     def __init__(self, latentInputLength, featureSize, channelsDepth,  batchSize, imgSize):

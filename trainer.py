@@ -83,6 +83,43 @@ class CramerGanLoss(object):
     def critic(self, x, y):
         return self.norm(x, y) - torch.norm(x, p=2, dim=-1)
 
+class CramerEneryGanLoss(object):
+    def __init__(self, problemSize, gradientPenalizer) -> None:
+        self.gradientPenalizer = gradientPenalizer
+        self.needFakes = 1
+
+    def forwardBackwardG(self, D, real, fake):
+        D_x = torch.split(D(real), 2)
+        D_x1, D_x2 = D_x[0], D_x[1]
+        D_G_z = torch.split(D(fake[0]), 2)
+        D_G_z1 = D_G_z[1]
+        D_G_z2 = D_G_z[0]
+
+        errG = (self.norm(D_x1, D_G_z1) + self.norm(D_x2, D_G_z2) - self.norm(D_G_z1, D_G_z2) - self.norm(D_x1, D_x2)).mean()
+        errG.backward()
+        return D_G_z2, errG
+
+    def norm(self, x, y):
+        return torch.norm(x - y, p=2, dim=-1)
+
+    def forwardBackwardD(self, D, real, fake):
+        reals = torch.split(real, 2)
+        D_x1 = D(reals[0])
+        fakes = torch.split(fake[0], 2)
+        fake1 = fakes[0].detach()
+        D_G_z1 = D(fake1)
+        D_G_z2 = D(fakes[1].detach())
+
+        # Get gradient penalty; not by D, but as Critic(D, interpolated, fake)
+        DCritic = lambda interp : self.critic(D(interp), D_G_z1)
+        gradient_penalty = self.gradientPenalizer.calculate(DCritic, reals[0], fake1)
+        # Create total loss and optimize
+        errD = - torch.mean(self.critic(D_x1, D_G_z2) - self.critic(D_G_z1, D_G_z2)) + gradient_penalty
+        errD.backward()
+        return D_G_z1, D_x1, errD
+
+    def critic(self, x, y):
+        return self.norm(x, y) - torch.norm(x, p=2, dim=-1)
 
 class Debugg(object):
     def __init__(self, print, plot, save) -> None:
