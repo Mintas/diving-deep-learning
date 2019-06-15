@@ -16,6 +16,10 @@ def plotMeanWithTitle(imgs, title):
     plt.title(title)
     plotMean(imgs)
 
+def plotMeanAbsDiff(ecal, fake) :
+    plt.imshow(abs(np.mean(ecal, axis=0, keepdims=False) - np.mean(fake, axis=0, keepdims=False)))
+    plt.colorbar()
+
 def plotLogResponse(img, logScale):
     plt.imshow(np.log10(img)) if logScale else plt.imshow(img)
     # #todo : what to do if we got 0 as one of inputs here?
@@ -54,13 +58,23 @@ def newline(p1, p2):      # функция отрисовки прямой
 
 
 def lineFunc(orthog, point, p): #p is momentum (0=x, 1=y, 2=z)
-    zoff = 25
-    point0 = point[0] + zoff * p[0] / p[2]
-    point1 = point[1] + zoff * p[1] / p[2]
+    x0, y0 = rotate(p, point)
 
+    return doLineFunc(orthog, p, x0, y0)
+
+
+def doLineFunc(orthog, p, x0, y0):
     mul = 1 if orthog else -1  # (x-x0)y/x + y0  or   -x(x-x0)/y + y0
-    line_func = lambda x: mul * (x - point0) * (p[0] ** -mul) * (p[1] ** mul) + point1
-    return line_func
+    scale = mul * (p[0] ** -mul) * (p[1] ** mul)
+    scaledX0fromY0 = scale * x0 + y0
+    return lambda x: x * scale - scaledX0fromY0
+
+
+def rotate(p, point):
+    zoff = 25
+    x0 = point[0] + zoff * p[0] / p[2]
+    y0 = point[1] + zoff * p[1] / p[2]
+    return x0, y0
 
 
 def get_assymetry(data, ps, points, orthog=False):   # асимметрия ливня вдоль и поперек направнения наклона
@@ -76,29 +90,38 @@ def get_assymetry(data, ps, points, orthog=False):   # асимметрия ли
 
         line_func = lineFunc(orthog, point, momentum)
 
-        idx = np.where(yy - line_func(xx) < 0)
-        if (not orthog and momentum[1] < 0):
-            idx = np.where(yy - line_func(xx) > 0)
-
-        zz = np.ones((30, 30))
-        zz[idx] = 0
-
-        assym = (np.sum(img * zz) - np.sum(img * (1 - zz))) / np.sum(img)
+        assym = computeAssym(img, line_func, momentum, orthog, xx, yy)
         assym_res.append(assym)
 
     return assym_res
 
 
+def computeAssym(img, line_func, momentum, orthog, xx, yy):
+    return doComputeAssym(img, line_func, momentum, orthog, xx, yy, np.sum(img))
+
+def doComputeAssym(img, line_func, momentum, orthog, xx, yy, sumImg):
+    idx = np.where(yy - line_func(xx) > 0) \
+        if not orthog and momentum[1] < 0 \
+        else np.where(yy - line_func(xx) < 0)
+    zz = np.ones((30, 30))
+    zz[idx] = 0
+    return (np.sum(img * zz) - np.sum(img * (1 - zz))) / sumImg
+
+
 def plotAssymetry(ecalData, orto, fakeData = None):
     assymetry_real = get_assymetry(ecalData.response, ecalData.momentum, ecalData.point, orto)
+    assymetry_fake = get_assymetry(fakeData.response, fakeData.momentum, fakeData.point, orto) \
+        if fakeData is not None else None
+
+    doPlotAssymetry(assymetry_real, orto, assymetry_fake)
+    return assymetry_real
+
+def doPlotAssymetry(assymetry_real, orto, assymetry_fake = None):
     plt.hist(assymetry_real, bins=50, range=[-1, 1], color='red', alpha=0.3, density=True, label='Geant')
-    if fakeData is not None:
-        plt.hist(get_assymetry(fakeData.response, fakeData.momentum, fakeData.point, orto),
-                 bins=50, range=[-1, 1], color='blue', alpha=0.3, density=True, label='GAN')
+    if assymetry_fake is not None:
+        plt.hist(assymetry_fake,bins=50, range=[-1, 1], color='blue', alpha=0.3, density=True, label='GAN')
     plt.xlabel(('Longitudual' if orto else 'Transverse') + ' cluster asymmetry')
     plt.legend(loc='best')
-    #plt.show()
-    return assymetry_real
 
 
 def get_shower_width(response, momentum, points, orthog=False):      # ширина ливня вдоль и поперек направления
@@ -120,48 +143,59 @@ def get_shower_width(response, momentum, points, orthog=False):      # шири�
 
         pyFracPx = p[1] / p[0]
         rescale = np.sqrt(1 + pyFracPx * pyFracPx)
+        rescaledX = rescale * x_
 
-        sum0 = 0
-        sum1 = 0
-        sum2 = 0
-        for i in range(100):
-            ww = bb(x_[i], y_[i])
-            if ww < 0: continue
-            sum0 += ww
-            rescaledX = rescale * x_[i]
-            sum1 += rescaledX * ww
-            sum2 += rescaledX * rescaledX * ww
+        spread = computeWidth(bb, rescaledX, x_, y_)
 
-        sum1 = sum1 / sum0
-        sum2 = sum2 / sum0
-        if sum2 >= sum1 * sum1:
-            sigma = np.sqrt(sum2 - sum1 * sum1)
-            spreads.append(sigma[0])
-        else:
-            spreads.append(0)
-
+        spreads.append(spread)
     return spreads
 
 
+def computeWidth(bb, rescaledX, x_, y_):
+    sum0 = 0
+    sum1 = 0
+    sum2 = 0
+    for i in range(100):
+        ww = bb(x_[i], y_[i])
+        if ww < 0: continue
+        sum0 += ww
+        rescaledXi = rescaledX[i]
+        sum1 += rescaledXi * ww
+        sum2 += rescaledXi * rescaledXi * ww
+    sum1 = sum1 / sum0
+    sum2 = sum2 / sum0
+    if sum2 > sum1 * sum1:
+        sigma = np.sqrt(sum2 - sum1 * sum1)
+        spread = sigma[0]
+    else:
+        spread = 0
+    return spread
+
+
 def plotShowerWidth(ecalData, orto, fakeData = None):
-    matplotlib.rcParams.update({'font.size': 14})
-
     shower_width_real_direct = get_shower_width(ecalData.response, ecalData.momentum, ecalData.point, orto)
-    plt.hist(shower_width_real_direct, bins=50, range=[0, 15], density=True, alpha=0.3, color='red', label='Geant')
+    fakeWidth = get_shower_width(fakeData.response, fakeData.momentum, fakeData.point, orto) \
+        if fakeData is not None else None
+    doPlotShowerWidth(shower_width_real_direct, orto, fakeWidth)
+    return shower_width_real_direct
 
-    if fakeData is not None:
-        plt.hist(get_shower_width(fakeData.response, fakeData.momentum, fakeData.point, orto), bins=50, range=[0, 15], density=True, alpha=0.3, color='blue', label='GAN');
+def doPlotShowerWidth(ecalWidth, orto, fakeWidth = None):
+    matplotlib.rcParams.update({'font.size': 14})
+    plt.hist(ecalWidth, bins=50, range=[0, 15], density=True, alpha=0.3, color='red', label='Geant')
+
+    if fakeWidth is not None:
+        plt.hist(fakeWidth, bins=50, range=[0, 15], density=True, alpha=0.3, color='blue', label='GAN');
     plt.legend(loc='best')
     plt.xlabel(('Longitudual' if orto else 'Transverse') + ' cluster width [cm]')
     plt.ylabel('Arbitrary units')
-    #plt.show()
-    return shower_width_real_direct
-
 
 def get_ms_ratio2(img, ps, alpha=0.1):
     ms = np.sum(img)
-    ms_ = ms * alpha
+    return computeMsRatio2(alpha, img, ms)
 
+
+def computeMsRatio2(alpha, img, sumImg):
+    ms_ = sumImg * alpha
     num = np.sum((img >= ms_))
     return num / 900.
 
@@ -175,7 +209,7 @@ def computeSparsity(response, momentum, alpha):
         sparsity.append(v_r)
     return np.array(sparsity)
 
-def doPlotSparsity(sparsity, alpha, color='red'):
+def doPlotSingleSparsity(sparsity, alpha, color='red'):
     means = np.mean(sparsity, axis=0)
     stddev = np.std(sparsity, axis=0)
     plt.plot(alpha, means, color=color)
@@ -191,17 +225,24 @@ def plotSparsity(ecalData, fakeData=None):
     alpha = np.linspace(-5, 0, 50)
 
     sparsity = computeSparsity(ecalData.response, ecalData.momentum, alpha)
-    doPlotSparsity(sparsity, alpha)
+    fs = computeSparsity(fakeData.response, fakeData.momentum, alpha) \
+        if fakeData is not None else None
+    doPlotSparsity(sparsity, fs)
+
+def doPlotSparsity(ecalSparsity, alpha, fakeSparsity=None):
+    matplotlib.rcParams.update({'font.size': 14})
+
+    doPlotSingleSparsity(ecalSparsity, alpha)
     legend = ['Geant']
-    if fakeData is not None:
-        fs = computeSparsity(fakeData.response, fakeData.momentum, alpha)
-        doPlotSparsity(fs, alpha, color='blue')
+    if fakeSparsity is not None:
+        doPlotSingleSparsity(fakeSparsity, alpha, color='blue')
         legend.append('GAN')
 
     plt.legend(legend)
     plt.title('Sparsity')
     plt.xlabel('log10(Threshold/GeV)')
     plt.ylabel('Fraction of cells above threshold')
+
 
 
 
@@ -260,7 +301,7 @@ def runAnalytics(filename, ecalData, fakeData=None):
     if ecalData is None : ecalData = parseEcalData(filename)
     print(ecalData.title)
 
-    plotUi = PDFPlotUi('computed/' + filename + '_generated' if fakeData is not None else '' + '.pdf')  # ShowPlotUi()
+    plotUi = PDFPlotUi('computed/' + filename + ('_generated' if fakeData is not None else '' + '.pdf'))  # ShowPlotUi()
 
 
     plotUi.toView(lambda: plotMeanWithTitle(ecalData.response, ecalData.title))
@@ -269,9 +310,7 @@ def runAnalytics(filename, ecalData, fakeData=None):
         plotUi.toView(lambda: plotMeanWithTitle(fakeData.response, fakeData.title))
 
         if (ecalData.response.shape[0] == fakeData.response.shape[0]) :
-            plt.imshow(abs(np.mean(ecalData.response, axis=0, keepdims=False) - np.mean(fakeData.response, axis=0, keepdims=False)))
-            plt.colorbar()
-            plt.show()
+            plotUi.toView(lambda: plotMeanAbsDiff(ecalData.response, fakeData.response))
 
     plotUi.toView(lambda: plotResponses(ecalData, fakeData=fakeData))
     plotUi.toView(lambda: plotResponses(ecalData, False, fakeData))
@@ -291,4 +330,3 @@ def run():
     #runAnalytics('caloGAN_v3_case5_2K')
     dataset = 'caloGAN_v3_case4_2K'
     runAnalytics(dataset, ecalData = parseEcalData(dataset), fakeData=parseEcalData('caloGAN_v3_case5_2K'))
-
