@@ -89,9 +89,9 @@ class CramerEneryGanLoss(object):
         self.needFakes = 1
 
     def forwardBackwardG(self, D, real, fake):
-        D_x = torch.split(D(real), 2)
+        D_x = torch.chunk(D(real), 2)
         D_x1, D_x2 = D_x[0], D_x[1]
-        D_G_z = torch.split(D(fake[0]), 2)
+        D_G_z = torch.chunk(D(fake[0]), 2)
         D_G_z1 = D_G_z[1]
         D_G_z2 = D_G_z[0]
 
@@ -103,9 +103,9 @@ class CramerEneryGanLoss(object):
         return torch.norm(x - y, p=2, dim=-1)
 
     def forwardBackwardD(self, D, real, fake):
-        reals = torch.split(real, 2)
+        reals = torch.chunk(real, 2)
         D_x1 = D(reals[0])
-        fakes = torch.split(fake[0], 2)
+        fakes = torch.chunk(fake[0], 2)
         fake1 = fakes[0].detach()
         D_G_z1 = D(fake1)
         D_G_z2 = D(fakes[1].detach())
