@@ -227,7 +227,7 @@ def plotSparsity(ecalData, fakeData=None):
     sparsity = computeSparsity(ecalData.response, ecalData.momentum, alpha)
     fs = computeSparsity(fakeData.response, fakeData.momentum, alpha) \
         if fakeData is not None else None
-    doPlotSparsity(sparsity, fs)
+    doPlotSparsity(sparsity, alpha, fs)
 
 def doPlotSparsity(ecalSparsity, alpha, fakeSparsity=None):
     matplotlib.rcParams.update({'font.size': 14})
