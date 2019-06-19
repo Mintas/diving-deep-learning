@@ -1,14 +1,17 @@
 from __future__ import print_function
 # %matplotlib inline
 import random
-import torch
 import torch.nn as nn
 import torch.utils.data
-import painters
+
+import domain.parameters
+import multimodalnorm.ganModelMultimodal
+import training.losses
+import training.optimDecorators
+from plots import painters
 import mygan
-import trainer
-import curvesAndDistributions
-import splicedNormCurve
+from training import trainer
+from multimodalnorm import curvesAndDistributions, splicedNormCurve
 import numpy as np
 
 # Set fixed random seed for reproducibility
@@ -29,7 +32,7 @@ beta1 = 0.5  # Beta1 hyperparam for Adam optimizers
 ngpu = 0  # Number of GPUs available. Use 0 for CPU mode. | OK I got cpu only
 gpWeight = 0.7 # which is good gpWeight? somehow 0.1 is nice, 1 is so so, 10 is bad, 0.01 is vanishing
 type = mygan.GANS.CRAMER
-initOptimizer = mygan.optRMSProp # works almost as well for SGD and lr = 0.03
+initOptimizer = training.optimDecorators.optRMSProp  # works almost as well for SGD and lr = 0.03
 
 m1 = 0
 m2 = 7
@@ -52,8 +55,8 @@ dataLoader = torch.utils.data.DataLoader(dataSet, batch_size=batch_size, shuffle
 
 # Decide which device we want to run on
 device = torch.device("cuda:0" if (torch.cuda.is_available() and ngpu > 0) else "cpu")
-problem = mygan.ProblemSize(nz, ngf, nc, batch_size, imgSize)
-hyperParams = mygan.HyperParameters(ngpu, lr, beta1)
+problem = domain.parameters.ProblemSize(nz, ngf, nc, batch_size, imgSize)
+hyperParams = domain.parameters.HyperParameters(ngpu, lr, beta1)
 
 
 def initNet(netClass):
@@ -66,12 +69,12 @@ def initNet(netClass):
     return net
 
 # Initialize BCELoss function; preprocess is my own extension of torch.Dataset
-lossCalculator = trainer.GanLoss(device, problem, nn.BCELoss()) if type == mygan.GANS.GAN \
-    else (trainer.WganLoss if type == mygan.GANS.WGAN else trainer.CramerGanLoss)(problem, mygan.GradientPenalizer(gpWeight, True, ngpu > 0))
+lossCalculator = training.losses.GanLoss(device, problem, nn.BCELoss()) if type == mygan.GANS.GAN \
+    else (training.losses.WganLoss if type == mygan.GANS.WGAN else training.losses.CramerGanLoss)(problem, training.losses.GradientPenalizer(gpWeight, True, ngpu > 0))
 
 ganTrainer = trainer.Trainer(device, problem, lossCalculator, initOptimizer, dataSet.preprocess, 'resources/norm07142030.pth')
-netG = initNet(mygan.Generator)
-netD = initNet(mygan.Discriminator)
+netG = initNet(multimodalnorm.ganModelMultimodal.Generator)
+netD = initNet(multimodalnorm.ganModelMultimodal.Discriminator)
 
 print("Starting Training Loop...")
 ganTrainer.train(netD, netG, dataLoader, num_epochs, hyperParams, painter, 12800)

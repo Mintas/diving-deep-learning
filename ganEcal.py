@@ -4,14 +4,22 @@ import random
 import torch
 import torch.nn as nn
 import torch.utils.data
-import painters
+
+import domain.ecaldata
+import domain.parameters
+
+import training.losses
+import training.optimDecorators
+from plots import painters, plotUi
 import mygan
 import architectures.dcgan02062019 as myzoo
-import trainer
+from training import trainer
 import numpy as np
-import iogan
+from serialization import iogan
 
-import analytic_funcs as AF
+from analytics import analytic_funcs as AF
+from analytics import optimized_analytic_funcs as OAF
+
 
 # Set fixed random seed for reproducibility
 manualSeed = 999
@@ -19,10 +27,10 @@ print("Random Seed: ", manualSeed)
 random.seed(manualSeed)
 torch.manual_seed(manualSeed)
 
-LossDict = {mygan.GANS.GAN : trainer.GanLoss,
-            mygan.GANS.WGAN : trainer.WganLoss,
-            mygan.GANS.CRAMER : trainer.CramerGanLoss,
-            mygan.GANS.ECRAMER : trainer.CramerEneryGanLoss}
+LossDict = {mygan.GANS.GAN : training.losses.GanLoss,
+            mygan.GANS.WGAN : training.losses.WganLoss,
+            mygan.GANS.CRAMER : training.losses.CramerGanLoss,
+            mygan.GANS.ECRAMER : training.losses.CramerEneryGanLoss}
 
 
 batch_size = 500  # Batch size during training
@@ -37,7 +45,7 @@ beta1 = 0.5  # Beta1 hyperparam for Adam optimizers
 ngpu = 0  # increase for GPU hosted calculations
 gpWeight = 0.5 # gradient penalty weight; somehow 0.1 is nice, 1 is so so, 10 is bad, 0.01 is vanishing
 type = mygan.GANS.CRAMER # we are going to try gan, wgan-gp and cramerGan
-initOptimizer = mygan.optRMSProp # works almost as well for SGD and lr = 0.03
+initOptimizer = training.optimDecorators.optRMSProp  # works almost as well for SGD and lr = 0.03
 
 # dataSet = myfuncs.ProbDistrDataset(torch.distributions.normal.Normal(0,1), 128000)
 datasetName = 'caloGAN_v3_case2_50K'
@@ -56,8 +64,8 @@ pdfFile = 'computed/%s_%s' % (datasetName, archVersion) #pdf is added in PDFPlot
 
 # Decide which device we want to run on
 device = torch.device("cuda:0" if (torch.cuda.is_available() and ngpu > 0) else "cpu")
-problem = mygan.ProblemSize(nz, ngf, nc, batch_size, imgSize)
-hyperParams = mygan.HyperParameters(ngpu, lr, beta1)
+problem = domain.parameters.ProblemSize(nz, ngf, nc, batch_size, imgSize)
+hyperParams = domain.parameters.HyperParameters(ngpu, lr, beta1)
 
 
 def initNet(netClass):
@@ -83,15 +91,15 @@ def trainGan():
     dataSet = torch.utils.data.TensorDataset(torch.from_numpy(ecalData['EnergyDeposit']).float())
     dataLoader = torch.utils.data.DataLoader(dataSet, batch_size=batch_size, shuffle=True, num_workers=1)
 
-    lossCalculator = trainer.GanLoss(device, problem, nn.BCELoss()) if type == mygan.GANS.GAN \
-        else (trainer.WganLoss if type == mygan.GANS.WGAN else trainer.CramerEneryGanLoss)(problem,
-                                                                                      mygan.GradientPenalizer(gpWeight,
-                                                                                                              True,
-                                                                                                              ngpu > 0))
+    lossCalculator = training.losses.GanLoss(device, problem, nn.BCELoss()) if type == mygan.GANS.GAN \
+        else (training.losses.WganLoss if type == mygan.GANS.WGAN else training.losses.CramerEneryGanLoss)(problem,
+                                                                                                           training.losses.GradientPenalizer(gpWeight,
+                                                                                                                                             True,
+                                                                                                                                             ngpu > 0))
 
     ganTrainer = trainer.Trainer(device, problem, lossCalculator, initOptimizer, lambda d: d[0], ganFile)
 
-    ui = AF.ShowPlotUi()
+    ui = plotUi.ShowPlotUi()
     painter = painters.ECalPainter(ui)
     print("Starting Training Loop...")
     dopt, gopt = ganTrainer.train(netD, netG, dataLoader, num_epochs, hyperParams, painter, 9)
@@ -101,7 +109,7 @@ def trainGan():
 
     if type != mygan.GANS.GAN:
         ui.toView(lambda: painters.plotGradPenalties(ganTrainer.ganLoss.gradientPenalizer.penalties,
-                                   ganTrainer.ganLoss.gradientPenalizer.norms))
+                                                     ganTrainer.ganLoss.gradientPenalizer.norms))
 
     ui.close()
 
@@ -110,7 +118,7 @@ def evalGan():
         iogan.loadGANs(netD, netG, ganFile)
         netG.eval(), netD.eval()
 
-        ecalData = AF.parseEcalData(datasetName)
+        ecalData = domain.ecaldata.parseEcalData(datasetName)
 
         shape = ecalData.response.shape
         print(shape)
@@ -118,9 +126,9 @@ def evalGan():
         tonnsOfNoise = torch.randn(shape[0], nz, 1, 1, device)
         generated = netG(tonnsOfNoise)
         responses = generated.reshape(shape).cpu().detach().numpy()
-        fakeData = AF.EcalData(responses, ecalData.momentum, ecalData.point)
+        fakeData = domain.ecaldata.EcalData(responses, ecalData.momentum, ecalData.point)
 
-        AF.runAnalytics(datasetName, ecalData, fakeData)
+        OAF.runAnalytics(datasetName, ecalData, fakeData)
 
 
 #trainGan()

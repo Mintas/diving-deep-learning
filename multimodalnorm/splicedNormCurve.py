@@ -1,10 +1,8 @@
 import torch
 from torch.distributions.normal import Normal
 import numpy as np
-import curvesAndDistributions
-import matplotlib.pyplot as plt
-from scipy.optimize import root
-from numpy.random import uniform
+from multimodalnorm import curvesAndDistributions
+
 
 class SplicedNormCurveMany:
     def __init__(self, means, intervalWidth):

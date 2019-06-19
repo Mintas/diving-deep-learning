@@ -1,8 +1,10 @@
 import matplotlib.pyplot as plt
-import matplotlib.animation as animation
 import torch
 import numpy as np
-import analytic_funcs as AF
+
+import analytics.plotAnalytics
+from analytics import analytic_funcs as AF
+
 
 def plotLosses(G_losses, D_losses):
     #plt.figure()
@@ -94,4 +96,4 @@ class ECalPainter():
     def plotFake(self, fake, epoch, iters):
         plt.suptitle("Generator: epoch " + str(epoch) + " and iteration " + str(iters))
         fake = self.Response(fake.view(fake.size(0), fake.size(2), fake.size(3)))
-        self.plotUi.toView(lambda: AF.plotResponses(fake, False))
+        self.plotUi.toView(lambda: analytics.plotAnalytics.plotResponses(fake, False))
