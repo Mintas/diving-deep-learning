@@ -95,7 +95,7 @@ def optimized_analityc(ecalData) :
         lfOrthog = AF.doLineFunc(True, p, x0, y0)
         lfNotOrthog = AF.doLineFunc(False, p, x0, y0)
 
-        #nrgy.append(p, sumImg)
+        nrgy.append(p, sumImg)
         assym.append(p, img, lfOrthog, lfNotOrthog, sumImg)
         if i <= 10000 :
             width.append(p, img, lfOrthog, lfNotOrthog)
@@ -134,7 +134,6 @@ def runAnalytics(filename, ecalData, fakeData=None):
 
 
 
-    #fix for fakeData is None
     plotUi.toView(lambda: doPlotAssymetry(ecalStats.get(AccumEnum.ASSYMETRY).assymNonOrtho, False, fakeStats.get(AccumEnum.ASSYMETRY).assymNonOrtho) if haveFake else None)
     plotUi.toView(lambda: doPlotAssymetry(ecalStats.get(AccumEnum.ASSYMETRY).assymOrtho, True, fakeStats.get(AccumEnum.ASSYMETRY).assymOrtho) if haveFake else None)
 
@@ -143,7 +142,7 @@ def runAnalytics(filename, ecalData, fakeData=None):
 
     plotUi.toView(lambda: doPlotSparsity(ecalStats.get(AccumEnum.SPARSITY).sparsity, fakeStats.get(AccumEnum.SPARSITY).sparsity) if haveFake else None)
 
-    #plotUi.toView(lambda: plotEnergies(ecalStats.get(AccumEnum.ENERGY).energies, fakeStats.get(AccumEnum.ENERGY).sparsity) if haveFake else None)
+    plotUi.toView(lambda: plotEnergies(ecalStats.get(AccumEnum.ENERGY).energies, fakeStats.get(AccumEnum.ENERGY).sparsity) if haveFake else None)
 
     plotUi.close()
 
