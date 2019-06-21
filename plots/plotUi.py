@@ -7,6 +7,7 @@ import matplotlib.backends.backend_pdf as pltpdf
 
 class ShowPlotUi():
     def toView(self, plot):
+        fig = plt.figure(figsize=(10, 10))
         plot()
         plt.show()
 

@@ -10,7 +10,7 @@ import domain.ecaldata as ED
 # ParticleMomentum = ecal['ParticleMomentum']
 # ParticlePDG=ecal['ParticlePDG']  #here we got only vector with constant 22
 
-dataset = 'caloGAN_v3_case2_50K'#'caloGAN_v3_case4_2K'
+dataset = 'caloGAN_v3_case4_2K' #'caloGAN_v3_case2_50K'#'caloGAN_v3_case4_2K'
 data = ED.parseEcalData(dataset)
 
 start = timer()

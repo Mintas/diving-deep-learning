@@ -12,13 +12,15 @@ import training.losses
 import training.optimDecorators
 from plots import painters, plotUi
 import mygan
-import architectures.dcgan02062019 as myzoo
+import architectures.linearGan21062019 as myzoo
 from training import trainer
 import numpy as np
 from serialization import iogan
 
 from analytics import analytic_funcs as AF
 from analytics import optimized_analytic_funcs as OAF
+from os.path import dirname
+
 
 
 # Set fixed random seed for reproducibility
@@ -35,7 +37,7 @@ LossDict = {mygan.GANS.GAN : training.losses.GanLoss,
 
 batch_size = 500  # Batch size during training
 nc = 1  # we got 1channel response
-nz = 42 # latent space size | 42 is close to hypotenuse of response 30x30
+nz = 100 # latent space size | 42 is close to hypotenuse of response 30x30
 imgSize = 30  # our respons is 30x30
 ngf = 30  # todo : decide Generator feature-space characteristic size
 ndf = 30  # decide Critic feature-space characteristic size
@@ -49,9 +51,9 @@ initOptimizer = training.optimDecorators.optRMSProp  # works almost as well for 
 
 # dataSet = myfuncs.ProbDistrDataset(torch.distributions.normal.Normal(0,1), 128000)
 datasetName = 'caloGAN_v3_case2_50K'
-archVersion = 'dcgan10062019' #arch version
-ganFile = 'computed/%s_%s.pth' % (datasetName, archVersion)
-pdfFile = 'computed/%s_%s' % (datasetName, archVersion) #pdf is added in PDFPlotUi
+archVersion = 'linearGan21062019' #arch version
+ganFile = 'resources/computed/%s_%s.pth' % (datasetName, archVersion)
+pdfFile = 'resources/computed/%s_%s' % (datasetName, archVersion) #pdf is added in PDFPlotUi
 #ecalData = np.load('ecaldata/caloGAN_v3_case4_2K.npz')
 
 # EnergyDeposit = ecal['EnergyDeposit']
@@ -86,16 +88,14 @@ print(netD)
 
 
 def trainGan():
-    ecalData = np.load('ecaldata/%s.npz' % datasetName)
+    ecalData = np.load('resources/ecaldata/%s.npz' % datasetName)
 
     dataSet = torch.utils.data.TensorDataset(torch.from_numpy(ecalData['EnergyDeposit']).float())
     dataLoader = torch.utils.data.DataLoader(dataSet, batch_size=batch_size, shuffle=True, num_workers=1)
 
     lossCalculator = training.losses.GanLoss(device, problem, nn.BCELoss()) if type == mygan.GANS.GAN \
         else (training.losses.WganLoss if type == mygan.GANS.WGAN else training.losses.CramerEneryGanLoss)(problem,
-                                                                                                           training.losses.GradientPenalizer(gpWeight,
-                                                                                                                                             True,
-                                                                                                                                             ngpu > 0))
+                                                                                                           training.losses.GradientPenalizer(gpWeight,True,ngpu > 0))
 
     ganTrainer = trainer.Trainer(device, problem, lossCalculator, initOptimizer, lambda d: d[0], ganFile)
 
@@ -123,7 +123,7 @@ def evalGan():
         shape = ecalData.response.shape
         print(shape)
 
-        tonnsOfNoise = torch.randn(shape[0], nz, 1, 1, device)
+        tonnsOfNoise = torch.randn(shape[0], nz, 1, 1, device=device)
         generated = netG(tonnsOfNoise)
         responses = generated.reshape(shape).cpu().detach().numpy()
         fakeData = domain.ecaldata.EcalData(responses, ecalData.momentum, ecalData.point)
@@ -131,4 +131,4 @@ def evalGan():
         OAF.runAnalytics(datasetName, ecalData, fakeData)
 
 
-#trainGan()
+evalGan()

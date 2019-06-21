@@ -160,9 +160,9 @@ def computeSparsity(response, momentum, alpha):
     for i in range(min(3000, len(response))):
         v_r = []
         for a in alpha:
-            v_r.append(get_ms_ratio2(response[i], momentum[i], pow(10, a)))
+            v_r.append(computeMsRatio2(pow(10, a), response[i], np.sum(response[i])))
         sparsity.append(v_r)
-    return np.array(sparsity)
+    return sparsity
 
 
 def plotSparsity(ecalData, fakeData=None):

@@ -140,9 +140,10 @@ def runAnalytics(filename, ecalData, fakeData=None):
     plotUi.toView(lambda: doPlotShowerWidth(ecalStats.get(AccumEnum.WIDTH).widthNonOrtho, False, fakeStats.get(AccumEnum.WIDTH).widthNonOrtho) if haveFake else None)
     plotUi.toView(lambda: doPlotShowerWidth(ecalStats.get(AccumEnum.WIDTH).widthOrtho, True, fakeStats.get(AccumEnum.WIDTH).widthOrtho) if haveFake else None)
 
-    plotUi.toView(lambda: doPlotSparsity(ecalStats.get(AccumEnum.SPARSITY).sparsity, fakeStats.get(AccumEnum.SPARSITY).sparsity) if haveFake else None)
+    es = ecalStats.get(AccumEnum.SPARSITY).sparsity
+    plotUi.toView(lambda: doPlotSparsity(es, ecalStats.get(AccumEnum.SPARSITY).alpha, fakeStats.get(AccumEnum.SPARSITY).sparsity) if haveFake else None)
 
-    plotUi.toView(lambda: plotEnergies(ecalStats.get(AccumEnum.ENERGY).energies, fakeStats.get(AccumEnum.ENERGY).sparsity) if haveFake else None)
+    plotUi.toView(lambda: plotEnergies(ecalStats.get(AccumEnum.ENERGY).energies, fakeStats.get(AccumEnum.ENERGY).energies) if haveFake else None)
 
     plotUi.close()
 

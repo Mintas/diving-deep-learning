@@ -50,7 +50,7 @@ def doPlotShowerWidth(ecalWidth, orto, fakeWidth = None):
     plt.hist(ecalWidth, bins=50, range=[0, 15], density=True, alpha=0.3, color='red', label='Geant')
 
     if fakeWidth is not None:
-        plt.hist(fakeWidth, bins=50, range=[0, 15], density=True, alpha=0.3, color='blue', label='GAN');
+        plt.hist(fakeWidth, bins=50, range=[0, 15], density=True, alpha=0.3, color='blue', label='GAN')
     plt.legend(loc='best')
     plt.xlabel(('Longitudual' if orto else 'Transverse') + ' cluster width [cm]')
     plt.ylabel('Arbitrary units')
@@ -68,10 +68,10 @@ def doPlotSingleSparsity(sparsity, alpha, color='red'):
 def doPlotSparsity(ecalSparsity, alpha, fakeSparsity=None):
     matplotlib.rcParams.update({'font.size': 14})
 
-    doPlotSingleSparsity(ecalSparsity, alpha)
+    doPlotSingleSparsity(np.array(ecalSparsity), alpha)
     legend = ['Geant']
     if fakeSparsity is not None:
-        doPlotSingleSparsity(fakeSparsity, alpha, color='blue')
+        doPlotSingleSparsity(np.array(fakeSparsity), alpha, color='blue')
         legend.append('GAN')
 
     plt.legend(legend)
