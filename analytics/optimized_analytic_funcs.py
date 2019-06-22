@@ -108,11 +108,10 @@ def optimized_analityc(ecalData) :
             AccumEnum.ENERGY : nrgy}
 
 def runAnalytics(filename, ecalData, fakeData=None):
-    if ecalData is None : ecalData = ED.parseEcalData(filename)
     print(ecalData.title)
 
     haveFake = fakeData is not None
-    plotUi = PUI.PDFPlotUi(dirname(dirname(__file__)) + '/resources/computed/' + filename + ('_generated' if haveFake else '' + '.pdf'))  # ShowPlotUi()
+    plotUi = PUI.PDFPlotUi(dirname(dirname(__file__)) + filename + '_stats' + ('_generated' if haveFake else '' + '.pdf'))  # ShowPlotUi()
 
 
     plotUi.toView(lambda: plotMeanWithTitle(ecalData.response, ecalData.title))

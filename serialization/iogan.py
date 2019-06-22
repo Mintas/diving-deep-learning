@@ -23,7 +23,7 @@ def saveGAN(epoch, fixedNoise, D, Dopt, Dloss, G, Gopt, Gloss, PATH):
             IOGANConst.Epoch: epoch,
             IOGANConst.DLoss: Dloss,
             IOGANConst.GLoss: Gloss
-            }, PATH)
+            }, PATH + '.pth')
     print('!!!!!! Models have been saved successfully !!!!!')
 
 def loadGAN(D, Dopt, G, Gopt, PATH):
@@ -39,7 +39,7 @@ def loadGAN(D, Dopt, G, Gopt, PATH):
     return checkpoint[IOGANConst.Epoch], DL, GL, checkpoint[IOGANConst.FixedNoise]
 
 def loadGANs(D, G, PATH):
-    checkpoint = torch.load(PATH)
+    checkpoint = torch.load(PATH + '.pth')
 
     D.load_state_dict(checkpoint[IOGANConst.D])
     G.load_state_dict(checkpoint[IOGANConst.G])

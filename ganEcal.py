@@ -52,8 +52,11 @@ initOptimizer = training.optimDecorators.optRMSProp  # works almost as well for 
 # dataSet = myfuncs.ProbDistrDataset(torch.distributions.normal.Normal(0,1), 128000)
 datasetName = 'caloGAN_v3_case2_50K'
 archVersion = 'linearGan21062019' #arch version
-ganFile = 'resources/computed/%s_%s.pth' % (datasetName, archVersion)
-pdfFile = 'resources/computed/%s_%s' % (datasetName, archVersion) #pdf is added in PDFPlotUi
+
+resultingName = 'resources/computed/%s_%s' % (datasetName, archVersion)
+ganFile = resultingName
+pdfFile = resultingName #pdf is added in PDFPlotUi
+statFile = resultingName
 #ecalData = np.load('ecaldata/caloGAN_v3_case4_2K.npz')
 
 # EnergyDeposit = ecal['EnergyDeposit']
@@ -128,7 +131,7 @@ def evalGan():
         responses = generated.reshape(shape).cpu().detach().numpy()
         fakeData = domain.ecaldata.EcalData(responses, ecalData.momentum, ecalData.point)
 
-        OAF.runAnalytics(datasetName, ecalData, fakeData)
+        OAF.runAnalytics(statFile, ecalData, fakeData)
 
 
 evalGan()
