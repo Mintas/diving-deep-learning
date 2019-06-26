@@ -131,7 +131,7 @@ def runAnalytics(filename, ecalData, fakeData=None, ecalStats=None, fakeStats=No
     print(ecalData.title)
 
     haveFake = fakeData is not None
-    plotUi = PUI.ShowPlotUi()#PUI.PDFPlotUi(dirname(dirname(__file__)) + filename + '_stats' + ('_generated' if haveFake else ''))  # ShowPlotUi()
+    plotUi = PUI.PDFPlotUi(dirname(dirname(__file__)) + filename + '_stats' + ('_generated' if haveFake else ''))  # ShowPlotUi()
 
     plotUi.toView(lambda: plotMeanWithTitle(ecalData.response, ecalData.title))
 

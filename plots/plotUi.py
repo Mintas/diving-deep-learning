@@ -9,7 +9,7 @@ class ShowPlotUi():
     def toView(self, plot):
         fig = plt.figure(figsize=(10, 10))
         plot()
-        fig.show()
+        plt.show()
 
     def close(self):
         pass
