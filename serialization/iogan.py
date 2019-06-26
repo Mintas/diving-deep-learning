@@ -1,4 +1,8 @@
 import torch
+import os
+
+
+EXTENSION = '.pth'
 
 class IOGANConst:
     FixedNoise = 'fixedNoise'
@@ -11,6 +15,8 @@ class IOGANConst:
     GLoss = 'GLoss'
 
 
+def isFilePresent(PATH) :
+    return os.path.isfile(PATH + EXTENSION)
 
 def saveGAN(epoch, fixedNoise, D, Dopt, Dloss, G, Gopt, Gloss, PATH):
     print('!!!!!! SAVING MODELS DONT BREAK EXECUTION !!!!!!')
@@ -23,11 +29,12 @@ def saveGAN(epoch, fixedNoise, D, Dopt, Dloss, G, Gopt, Gloss, PATH):
             IOGANConst.Epoch: epoch,
             IOGANConst.DLoss: Dloss,
             IOGANConst.GLoss: Gloss
-            }, PATH + '.pth')
+            }, PATH + EXTENSION)
     print('!!!!!! Models have been saved successfully !!!!!')
 
+
 def loadGAN(D, Dopt, G, Gopt, PATH):
-    checkpoint = torch.load(PATH)
+    checkpoint = torch.load(PATH + EXTENSION)
 
     D.load_state_dict(checkpoint[IOGANConst.D])
     G.load_state_dict(checkpoint[IOGANConst.G])
@@ -38,8 +45,9 @@ def loadGAN(D, Dopt, G, Gopt, PATH):
     GL = checkpoint[IOGANConst.GLoss]
     return checkpoint[IOGANConst.Epoch], DL, GL, checkpoint[IOGANConst.FixedNoise]
 
+
 def loadGANs(D, G, PATH):
-    checkpoint = torch.load(PATH + '.pth')
+    checkpoint = torch.load(PATH + EXTENSION)
 
     D.load_state_dict(checkpoint[IOGANConst.D])
     G.load_state_dict(checkpoint[IOGANConst.G])

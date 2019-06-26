@@ -15,8 +15,9 @@ class AssymetryAccumulator :
         self.imgSize = imgSize
         self.assymOrtho = []
         self.assymNonOrtho = []
-        x = np.linspace(-14.5, 14.5, imgSize)
-        y = np.linspace(-14.5, 14.5, imgSize)
+        bound = imgSize/2.0 - 0.5
+        x = np.linspace(-bound, bound, imgSize)
+        y = np.linspace(-bound, bound, imgSize)
         self.xx, self.yy = np.meshgrid(x, y)
 
     def append(self, momentum, img, lineOrt, lineNotOrt, sumImg):
@@ -29,10 +30,11 @@ class ShowerWidthAccumulator :
         self.imgSize = imgSize
         self.widthOrtho = []
         self.widthNonOrtho = []
-        self.x = np.linspace(-14.5, 14.5, imgSize)
-        self.y = np.linspace(-14.5, 14.5, imgSize)
-        self.x_ = np.linspace(-14.5, 14.5, 100)
-        self.interpolation = lambda img: interp2d(self.x, self.y, img, kind='cubic')
+        bound = imgSize/2.0 - 0.5
+        self.x = np.linspace(-bound, bound, imgSize)
+        self.y = np.linspace(-bound, bound, imgSize)
+        self.x_ = np.linspace(-bound, bound, 100)
+        #self.interpolation = lambda img: interp2d(self.x, self.y, img, kind='cubic')
 
     def append(self, momentum, img, lineOrt, lineNotOrt):
         bb = self.interpolation(img)
@@ -46,6 +48,24 @@ class ShowerWidthAccumulator :
 
         self.widthOrtho.append(AF.computeWidth(bb, rescaledX, self.x_, y_Ort))
         self.widthNonOrtho.append(AF.computeWidth(bb, rescaledX, self.x_, y_NotOrt))
+
+    def interpolation(self, img):
+        return interp2d(self.x, self.y, img, kind='cubic')
+
+
+# class ShiftAccumulator :
+#     def __init__(self, imgSize) -> None:
+#         self.imgSize = imgSize
+#         self.shifts = []
+#         self.zoff = 25.
+#         bound = imgSize/2.0 - 0.5
+#         x = np.linspace(-bound, bound, imgSize)
+#         y = np.linspace(-bound, bound, imgSize)
+#         self.xx, self.yy = np.meshgrid(x, y)
+#
+#     def append(self, momentum, img, lineOrt, lineNotOrt, sumImg):
+#         self.assymOrtho.append(AF.doComputeAssym(img, lineOrt, momentum, True, self.xx, self.yy, sumImg))
+#         self.assymNonOrtho.append(AF.doComputeAssym(img, lineNotOrt, momentum, True, self.xx, self.yy, sumImg))
 
 
 class SparsityAccumulator :
@@ -73,13 +93,13 @@ class AccumEnum :
     ENERGY = "ER"
 
 
-def optimized_analityc(ecalData) :
+def optimized_analityc(ecalData, imgsize) :
     response = ecalData.response
     momentum = ecalData.momentum
     points = ecalData.point
 
-    assym = AssymetryAccumulator(30)
-    width = ShowerWidthAccumulator(30)
+    assym = AssymetryAccumulator(imgsize)
+    width = ShowerWidthAccumulator(imgsize)
     sprsity = SparsityAccumulator()
     nrgy = EnergyResponseAccumulator()
 
@@ -107,16 +127,18 @@ def optimized_analityc(ecalData) :
             AccumEnum.SPARSITY : sprsity,
             AccumEnum.ENERGY : nrgy}
 
-def runAnalytics(filename, ecalData, fakeData=None):
+def runAnalytics(filename, ecalData, fakeData=None, ecalStats=None, fakeStats=None):
     print(ecalData.title)
 
     haveFake = fakeData is not None
-    plotUi = PUI.PDFPlotUi(dirname(dirname(__file__)) + filename + '_stats' + ('_generated' if haveFake else '' + '.pdf'))  # ShowPlotUi()
-
+    plotUi = PUI.ShowPlotUi()#PUI.PDFPlotUi(dirname(dirname(__file__)) + filename + '_stats' + ('_generated' if haveFake else ''))  # ShowPlotUi()
 
     plotUi.toView(lambda: plotMeanWithTitle(ecalData.response, ecalData.title))
 
-    fakeStats = None
+    plotUi.toView(lambda: plotResponses(ecalData, fakeData=fakeData))
+    plotUi.toView(lambda: plotResponses(ecalData, False, fakeData))
+
+    imgSize = ecalData.response[0].shape[0]
     if haveFake:
         print(fakeData.title)
         plotUi.toView(lambda: plotMeanWithTitle(fakeData.response, fakeData.title))
@@ -124,14 +146,10 @@ def runAnalytics(filename, ecalData, fakeData=None):
         if (ecalData.response.shape[0] == fakeData.response.shape[0]) :
             plotUi.toView(lambda: plotMeanAbsDiff(ecalData.response, fakeData.response))
 
-        fakeStats = optimized_analityc(fakeData)
-
-    ecalStats = optimized_analityc(ecalData)
-
-    plotUi.toView(lambda: plotResponses(ecalData, fakeData=fakeData))
-    plotUi.toView(lambda: plotResponses(ecalData, False, fakeData))
-
-
+        if fakeStats is None :
+            fakeStats = optimized_analityc(fakeData, imgSize)
+    if ecalStats is None :
+        ecalStats = optimized_analityc(ecalData, imgSize)
 
     plotUi.toView(lambda: doPlotAssymetry(ecalStats.get(AccumEnum.ASSYMETRY).assymNonOrtho, False, fakeStats.get(AccumEnum.ASSYMETRY).assymNonOrtho) if haveFake else None)
     plotUi.toView(lambda: doPlotAssymetry(ecalStats.get(AccumEnum.ASSYMETRY).assymOrtho, True, fakeStats.get(AccumEnum.ASSYMETRY).assymOrtho) if haveFake else None)

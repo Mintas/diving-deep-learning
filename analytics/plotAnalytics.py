@@ -18,7 +18,7 @@ def plotMeanAbsDiff(ecal, fake) :
 
 
 def plotLogResponse(img, logScale):
-    plt.imshow(np.log10(img)) if logScale else plt.imshow(img)
+    plt.imshow(np.log10(img) if logScale else img, interpolation='nearest')
     # #todo : what to do if we got 0 as one of inputs here?
     plt.colorbar()
     plt.xlabel('cell X \n')
@@ -32,7 +32,7 @@ def plotResponses(ecalData, logScale=True, fakeData = None):
         # print ("fake", fake_p[i])
         plt.subplot(521 + 2*i)  # todo : how to update this correctly ?
         plotLogResponse(ecalData.response[i], logScale)
-        plt.subplot(521 + 2*i+1)  # todo : how to update this correctly ?
+        plt.subplot(521 + 2*i+1)
         asFake = fakeData.response[i] if fakeData is not None else ecalData.response[-i]
         plotLogResponse(asFake, logScale)
 
@@ -61,8 +61,6 @@ def doPlotSingleSparsity(sparsity, alpha, color='red'):
     stddev = np.std(sparsity, axis=0)
     plt.plot(alpha, means, color=color)
     plt.fill_between(alpha, means - stddev, means + stddev, color=color, alpha=0.3)
-    #plt.plot(alpha, means_f, color='blue')
-    #plt.fill_between(alpha, means_f - stddev_f, means_f + stddev_f, color='blue', alpha=0.3)
 
 
 def doPlotSparsity(ecalSparsity, alpha, fakeSparsity=None):

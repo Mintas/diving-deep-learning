@@ -1,6 +1,6 @@
 import numpy as np
 from os.path import dirname
-
+import torchvision.transforms as tvtf
 
 
 class EcalData :
@@ -27,3 +27,13 @@ def dictToEcalData(ecal):
             '\n Point :' + str(real_point[0]) + \
             '\n particle type is : ' + str(ecal['ParticlePDG'][0])
     return EcalData(real_imgs, real_p, real_point, title)
+
+def resizeResponses(data, size) :
+    resize = tvtf.Compose([
+        tvtf.ToPILImage(),
+        tvtf.Resize(size),
+        tvtf.ToTensor()
+    ])
+    response = data.response if isinstance(data, EcalData) else data
+    responseResized = np.array([resize(np.float32(img))[0].numpy() for img in response])
+    return EcalData(responseResized, data.momentum, data.point, data.title + '\n Resized to ' + str(size) + 'x' + str(size)) if isinstance(data, EcalData) else responseResized

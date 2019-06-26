@@ -28,7 +28,7 @@ class Trainer(object):
         return torch.randn(count, self.problemSize.nz, 1, 1, device=self.device)
 
     def tryLoadPrecomputed(self, Dis, Gen, Dopt, Gopt):
-        if not os.path.isfile(self.path): return 0, None #'./computed/caloGAN_v3_case1_50K.pdf'
+        if not iogan.isFilePresent(self.path): return 0, None
         e, self.D_losses, self.G_losses, fixedNoise = iogan.loadGAN(Dis, Dopt, Gen, Gopt, self.path)
         print('loaded precomputed gans')
         return e, fixedNoise

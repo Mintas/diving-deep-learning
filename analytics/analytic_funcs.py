@@ -74,7 +74,8 @@ def doComputeAssym(img, line_func, momentum, orthog, xx, yy, sumImg):
     idx = np.where(yy - line_func(xx) > 0) \
         if not orthog and momentum[1] < 0 \
         else np.where(yy - line_func(xx) < 0)
-    zz = np.ones((30, 30))
+    imsize = img.shape[0]
+    zz = np.ones((imsize, imsize))
     zz[idx] = 0
     return (np.sum(img * zz) - np.sum(img * (1 - zz))) / sumImg
 
@@ -150,9 +151,10 @@ def get_ms_ratio2(img, ps, alpha=0.1):
 
 
 def computeMsRatio2(alpha, img, sumImg):
+    imsize = img.shape[0]
     ms_ = sumImg * alpha
     num = np.sum((img >= ms_))
-    return num / 900.
+    return num / imsize**2
 
 
 def computeSparsity(response, momentum, alpha):

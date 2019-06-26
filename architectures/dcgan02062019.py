@@ -14,8 +14,8 @@ class DiscEcal(nn.Module):
         kernel_size = 4
         stride = 2
         self.main = nn.Sequential(
-             nn.Conv2d(problem.nc, problem.nf, 2, stride, 1, bias=False), nn.LeakyReLU(0.2),
-             nn.Conv2d(problem.nf, nfx2, kernel_size, stride, 1, bias=False),
+             nn.Conv2d(problem.nc, problem.imgSize, 2, stride, 1, bias=False), nn.LeakyReLU(0.2),
+             nn.Conv2d(problem.imgSize, nfx2, kernel_size, stride, 1, bias=False),
              nn.LeakyReLU(0.2),
              nn.Conv2d(nfx2, nfx4, kernel_size, stride, 1, bias=False),
              nn.LeakyReLU(0.2),
@@ -44,9 +44,9 @@ class GenEcal(nn.Module):
             nn.ConvTranspose2d(self.nfx4, self.nfx2, kernel_size, stride, 1, bias=False), #nn.BatchNorm2d(self.nfx2),
             nn.ReLU(),
             #output 30x16x16
-            nn.ConvTranspose2d(self.nfx2, problem.nf, kernel_size, stride, 1, bias=False), #nn.BatchNorm2d(problem.nf),
+            nn.ConvTranspose2d(self.nfx2, problem.imgSize, kernel_size, stride, 1, bias=False), #nn.BatchNorm2d(problem.nf),
             nn.ReLU(),
-            nn.ConvTranspose2d(problem.nf, problem.nc, 2, stride, 1, bias=False),
+            nn.ConvTranspose2d(problem.imgSize, problem.nc, 2, stride, 1, bias=False),
             nn.ReLU() # ReLU here, because we need 0+ values
         )
 
