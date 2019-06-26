@@ -135,9 +135,6 @@ def runAnalytics(filename, ecalData, fakeData=None, ecalStats=None, fakeStats=No
 
     plotUi.toView(lambda: plotMeanWithTitle(ecalData.response, ecalData.title))
 
-    plotUi.toView(lambda: plotResponses(ecalData, fakeData=fakeData))
-    plotUi.toView(lambda: plotResponses(ecalData, False, fakeData))
-
     imgSize = ecalData.response[0].shape[0]
     if haveFake:
         print(fakeData.title)
@@ -146,21 +143,24 @@ def runAnalytics(filename, ecalData, fakeData=None, ecalStats=None, fakeStats=No
         if (ecalData.response.shape[0] == fakeData.response.shape[0]) :
             plotUi.toView(lambda: plotMeanAbsDiff(ecalData.response, fakeData.response))
 
-        if fakeStats is None :
+        if fakeStats is None:
             fakeStats = optimized_analityc(fakeData, imgSize)
-    if ecalStats is None :
+    if ecalStats is None:
         ecalStats = optimized_analityc(ecalData, imgSize)
 
-    plotUi.toView(lambda: doPlotAssymetry(ecalStats.get(AccumEnum.ASSYMETRY).assymNonOrtho, False, fakeStats.get(AccumEnum.ASSYMETRY).assymNonOrtho) if haveFake else None)
-    plotUi.toView(lambda: doPlotAssymetry(ecalStats.get(AccumEnum.ASSYMETRY).assymOrtho, True, fakeStats.get(AccumEnum.ASSYMETRY).assymOrtho) if haveFake else None)
+    plotUi.toView(lambda: plotResponses(ecalData, fakeData=fakeData))
+    plotUi.toView(lambda: plotResponses(ecalData, False, fakeData))
 
-    plotUi.toView(lambda: doPlotShowerWidth(ecalStats.get(AccumEnum.WIDTH).widthNonOrtho, False, fakeStats.get(AccumEnum.WIDTH).widthNonOrtho) if haveFake else None)
-    plotUi.toView(lambda: doPlotShowerWidth(ecalStats.get(AccumEnum.WIDTH).widthOrtho, True, fakeStats.get(AccumEnum.WIDTH).widthOrtho) if haveFake else None)
+    plotUi.toView(lambda: doPlotAssymetry(ecalStats.get(AccumEnum.ASSYMETRY).assymNonOrtho, False, fakeStats.get(AccumEnum.ASSYMETRY).assymNonOrtho if haveFake else None))
+    plotUi.toView(lambda: doPlotAssymetry(ecalStats.get(AccumEnum.ASSYMETRY).assymOrtho, True, fakeStats.get(AccumEnum.ASSYMETRY).assymOrtho if haveFake else None))
+
+    plotUi.toView(lambda: doPlotShowerWidth(ecalStats.get(AccumEnum.WIDTH).widthNonOrtho, False, fakeStats.get(AccumEnum.WIDTH).widthNonOrtho if haveFake else None))
+    plotUi.toView(lambda: doPlotShowerWidth(ecalStats.get(AccumEnum.WIDTH).widthOrtho, True, fakeStats.get(AccumEnum.WIDTH).widthOrtho if haveFake else None))
 
     es = ecalStats.get(AccumEnum.SPARSITY).sparsity
-    plotUi.toView(lambda: doPlotSparsity(es, ecalStats.get(AccumEnum.SPARSITY).alpha, fakeStats.get(AccumEnum.SPARSITY).sparsity) if haveFake else None)
+    plotUi.toView(lambda: doPlotSparsity(es, ecalStats.get(AccumEnum.SPARSITY).alpha, fakeStats.get(AccumEnum.SPARSITY).sparsity if haveFake else None))
 
-    plotUi.toView(lambda: plotEnergies(ecalStats.get(AccumEnum.ENERGY).energies, fakeStats.get(AccumEnum.ENERGY).energies) if haveFake else None)
+    plotUi.toView(lambda: plotEnergies(ecalStats.get(AccumEnum.ENERGY).energies, fakeStats.get(AccumEnum.ENERGY).energies if haveFake else None))
 
     plotUi.close()
 
