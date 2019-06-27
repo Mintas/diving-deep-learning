@@ -12,7 +12,7 @@ import training.losses
 import training.optimDecorators
 from plots import painters, plotUi
 import mygan
-import architectures.linearGan21062019 as myzoo
+import architectures.dcgan02062019 as myzoo
 from training import trainer
 import numpy as np
 from serialization import iogan
@@ -51,7 +51,7 @@ initOptimizer = training.optimDecorators.optRMSProp  # works almost as well for 
 
 # dataSet = myfuncs.ProbDistrDataset(torch.distributions.normal.Normal(0,1), 128000)
 datasetName = 'caloGAN_v3_case2_50K'
-archVersion = 'linearGan21062019' #arch version
+archVersion = 'dcgan02062019' #arch version
 
 resultingName = 'resources/computed/%s_%s' % (datasetName, archVersion)
 ganFile = resultingName
@@ -134,4 +134,4 @@ def evalGan():
         OAF.runAnalytics(statFile, ecalData, fakeData)
 
 
-evalGan()
+#trainGan()

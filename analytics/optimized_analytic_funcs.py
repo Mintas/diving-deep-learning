@@ -171,4 +171,4 @@ def run():
     #runAnalytics('caloGAN_v3_case5_2K')
     dataset = 'caloGAN_v3_case4_2K'
     es, fs = runAnalytics(dataset, ecalData = ED.parseEcalData(dataset))#, fakeData=ED.parseEcalData('caloGAN_v3_case5_2K'))
-run()
+#run()

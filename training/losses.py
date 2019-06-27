@@ -59,7 +59,8 @@ class CramerGanLoss(object):
         D_G_z1 = D(fake[1])
         D_G_z2 = D(fake[0])
 
-        errG = (self.norm(D_x, D_G_z1) + self.norm(D_x, D_G_z2) - self.norm(D_G_z1, D_G_z2)).mean()
+        norm_x_Gz1 = self.norm(D_x, D_G_z1)
+        errG = (norm_x_Gz1 + self.norm(D_x, D_G_z2) - self.norm(D_G_z1, D_G_z2)).mean()
         errG.backward()
         return D_G_z2, errG
 
@@ -96,7 +97,8 @@ class CramerEneryGanLoss(object):
         D_G_z1 = D_G_z[1]
         D_G_z2 = D_G_z[0]
 
-        errG = (self.norm(D_x1, D_G_z1) + self.norm(D_x2, D_G_z2) - self.norm(D_G_z1, D_G_z2) - self.norm(D_x1, D_x2)).mean()
+        norm_x1_Gz1 = self.norm(D_x1, D_G_z1)
+        errG = (norm_x1_Gz1 + self.norm(D_x2, D_G_z2) - self.norm(D_G_z1, D_G_z2) - self.norm(D_x1, D_x2)).mean()
         errG.backward()
         return D_G_z2, errG
 
@@ -155,7 +157,7 @@ class GradientPenalizer :
         gradients = gradients.view(real.size(0), -1)
 
         # Derivatives of the gradient close to 0 can cause problems because of the square root, so manually calculate norm and add epsilon
-        gradients_norm = torch.sqrt(torch.sum(gradients ** 2, dim=1) + 1e-12)
+        gradients_norm = torch.sqrt(torch.sum(gradients ** 2, dim=1) + 1e-12) #todo : replace with gradients.norm(2, dim=1) ?
         if self.trackProgress:
             self.norms.append(gradients.norm(2, dim=1).mean().item())
 
