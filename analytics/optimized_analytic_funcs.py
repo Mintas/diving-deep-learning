@@ -10,6 +10,7 @@ from scipy.interpolate import interp2d
 import domain.ecaldata as ED
 import plots.plotUi as PUI
 
+
 class AssymetryAccumulator :
     def __init__(self, imgSize) -> None:
         self.imgSize = imgSize
@@ -34,7 +35,6 @@ class ShowerWidthAccumulator :
         self.x = np.linspace(-bound, bound, imgSize)
         self.y = np.linspace(-bound, bound, imgSize)
         self.x_ = np.linspace(-bound, bound, 100)
-        #self.interpolation = lambda img: interp2d(self.x, self.y, img, kind='cubic')
 
     def append(self, momentum, img, lineOrt, lineNotOrt):
         bb = self.interpolation(img)
@@ -79,6 +79,7 @@ class SparsityAccumulator :
             v_r.append(AF.computeMsRatio2(pow(10, a), img, sumImg))
         self.sparsity.append(v_r)
 
+
 class EnergyResponseAccumulator :
     def __init__(self) -> None:
         self.energies = []
@@ -117,10 +118,10 @@ def optimized_analityc(ecalData, imgsize) :
 
         nrgy.append(p, sumImg)
         assym.append(p, img, lfOrthog, lfNotOrthog, sumImg)
-        if i <= 10000 :
-            width.append(p, img, lfOrthog, lfNotOrthog)
-        if i <= 3000 :
-            sprsity.append(p, img, sumImg)
+        # if i <= 10000 :
+        #     width.append(p, img, lfOrthog, lfNotOrthog)
+        # if i <= 3000 :
+        #     sprsity.append(p, img, sumImg)
 
     return {AccumEnum.ASSYMETRY : assym,
             AccumEnum.WIDTH : width,
@@ -131,7 +132,7 @@ def runAnalytics(filename, ecalData, fakeData=None, ecalStats=None, fakeStats=No
     print(ecalData.title)
 
     haveFake = fakeData is not None
-    plotUi = PUI.PDFPlotUi(dirname(dirname(__file__)) + filename + '_stats' + ('_generated' if haveFake else ''))  # ShowPlotUi()
+    plotUi = PUI.PDFPlotUi(dirname(dirname(__file__)) + filename + '_stats' + ('_generated' if haveFake else ''))  # PUI.ShowPlotUi()
 
     plotUi.toView(lambda: plotMeanWithTitle(ecalData.response, ecalData.title))
 
@@ -163,10 +164,11 @@ def runAnalytics(filename, ecalData, fakeData=None, ecalStats=None, fakeStats=No
     plotUi.toView(lambda: plotEnergies(ecalStats.get(AccumEnum.ENERGY).energies, fakeStats.get(AccumEnum.ENERGY).energies if haveFake else None))
 
     plotUi.close()
+    return ecalStats, fakeStats
 
 
 def run():
     #runAnalytics('caloGAN_v3_case5_2K')
     dataset = 'caloGAN_v3_case4_2K'
-    runAnalytics(dataset, ecalData = ED.parseEcalData(dataset))#, fakeData=ED.parseEcalData('caloGAN_v3_case5_2K'))
-#run()
+    es, fs = runAnalytics(dataset, ecalData = ED.parseEcalData(dataset))#, fakeData=ED.parseEcalData('caloGAN_v3_case5_2K'))
+run()

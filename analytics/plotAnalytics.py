@@ -44,6 +44,11 @@ def doPlotAssymetry(assymetry_real, orto, assymetry_fake = None):
     plt.xlabel(('Longitudual' if orto else 'Transverse') + ' cluster asymmetry')
     plt.legend(loc='best')
 
+def plotAssymWithNpHist(ecalAssym):
+    #1st step : calculate histogram
+    assymHist, binz = np.histogram(ecalAssym, bins=50, range=[-1, 1], density=True)
+    #2nd step : plot hist by weights; is equal to plt.hist(ecalAssym, bins=.....)
+    plt.hist(binz[:-1], bins=len(binz), weights=assymHist, range=[-1, 1], color='red', alpha=0.3, density=True, label='Geant')
 
 def doPlotShowerWidth(ecalWidth, orto, fakeWidth = None):
     matplotlib.rcParams.update({'font.size': 14})
@@ -80,6 +85,9 @@ def doPlotSparsity(ecalSparsity, alpha, fakeSparsity=None):
 
 def plotEnergies(ecal, fake=None) :
     maxE = max(ecal)
+    if fake is not None:
+        maxE = max(maxE, max(fake))
+
     plt.hist(ecal, 100, range=[0, maxE], log=True, color='red', alpha=0.3)
     legend = ['Geant']
 
