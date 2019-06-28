@@ -118,10 +118,10 @@ def optimized_analityc(ecalData, imgsize) :
 
         nrgy.append(p, sumImg)
         assym.append(p, img, lfOrthog, lfNotOrthog, sumImg)
-        # if i <= 10000 :
-        #     width.append(p, img, lfOrthog, lfNotOrthog)
-        # if i <= 3000 :
-        #     sprsity.append(p, img, sumImg)
+        if i <= 10000 :
+            width.append(p, img, lfOrthog, lfNotOrthog)
+        if i <= 3000 :
+            sprsity.append(p, img, sumImg)
 
     return {AccumEnum.ASSYMETRY : assym,
             AccumEnum.WIDTH : width,
