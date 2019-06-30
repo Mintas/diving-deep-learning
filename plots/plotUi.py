@@ -7,8 +7,14 @@ import matplotlib.backends.backend_pdf as pltpdf
 
 class ShowPlotUi():
     def toView(self, plot):
-        fig = plt.figure(figsize=(10, 10))
+        fig = self.figure()
         plot()
+        self.show(fig)
+
+    def figure(self):
+        return plt.figure(figsize=(10, 10))
+
+    def show(self, fig):
         plt.show()
 
     def close(self):
@@ -25,8 +31,14 @@ class PDFPlotUi():
         self.pdf = pltpdf.PdfPages(lookupNextName + '.pdf')
 
     def toView(self, plot):
-        fig = plt.figure(figsize=(10, 10))
+        fig = self.figure()
         plot()
+        self.show(fig)
+
+    def figure(self):
+        return plt.figure(figsize=(10, 10))
+
+    def show(self, fig):
         self.pdf.savefig(fig)
 
     def close(self):

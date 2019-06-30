@@ -9,7 +9,9 @@ from scipy.interpolate import interp2d
 ##include math
 import domain.ecaldata as ED
 import plots.plotUi as PUI
+import matplotlib.pyplot as plt
 
+#Below we define set of statistic accumulators, required methods are append(customargs) and get(flag)
 
 class AssymetryAccumulator :
     def __init__(self, imgSize) -> None:
@@ -25,6 +27,9 @@ class AssymetryAccumulator :
         self.assymOrtho.append(AF.doComputeAssym(img, lineOrt, momentum, True, self.xx, self.yy, sumImg))
         self.assymNonOrtho.append(AF.doComputeAssym(img, lineNotOrt, momentum, True, self.xx, self.yy, sumImg))
 
+    def get(self, ortho=True):
+        return self.assymOrtho if ortho else self.assymNonOrtho
+
 
 class ShowerWidthAccumulator :
     def __init__(self, imgSize) -> None:
@@ -35,6 +40,9 @@ class ShowerWidthAccumulator :
         self.x = np.linspace(-bound, bound, imgSize)
         self.y = np.linspace(-bound, bound, imgSize)
         self.x_ = np.linspace(-bound, bound, 100)
+
+    def interpolation(self, img):
+        return interp2d(self.x, self.y, img, kind='cubic')
 
     def append(self, momentum, img, lineOrt, lineNotOrt):
         bb = self.interpolation(img)
@@ -49,8 +57,8 @@ class ShowerWidthAccumulator :
         self.widthOrtho.append(AF.computeWidth(bb, rescaledX, self.x_, y_Ort))
         self.widthNonOrtho.append(AF.computeWidth(bb, rescaledX, self.x_, y_NotOrt))
 
-    def interpolation(self, img):
-        return interp2d(self.x, self.y, img, kind='cubic')
+    def get(self, ortho=True):
+        return self.widthOrtho if ortho else self.widthNonOrtho
 
 
 # class ShiftAccumulator :
@@ -79,6 +87,9 @@ class SparsityAccumulator :
             v_r.append(AF.computeMsRatio2(pow(10, a), img, sumImg))
         self.sparsity.append(v_r)
 
+    def get(self, sparsityOrAlpha=True):
+        return self.sparsity if sparsityOrAlpha else self.alpha
+
 
 class EnergyResponseAccumulator :
     def __init__(self) -> None:
@@ -87,12 +98,22 @@ class EnergyResponseAccumulator :
     def append(self, momentum, sumImg):
         self.energies.append(sumImg)
 
+    def get(self, ignored=True):
+        return self.energies
+
 class AccumEnum :
     ASSYMETRY = "A"
     WIDTH = "W"
     SPARSITY = "S"
     ENERGY = "ER"
 
+class EcalStats :
+    def __init__(self, statsDict) -> None:
+        self.stats = statsDict
+
+    # flag represent additional feature of accumulator, True or ignored by default
+    def get(self, statType, flag=True):
+        return self.stats.get(statType).get(flag)
 
 def optimized_analityc(ecalData, imgsize) :
     response = ecalData.response
@@ -123,16 +144,23 @@ def optimized_analityc(ecalData, imgsize) :
         if i <= 3000 :
             sprsity.append(p, img, sumImg)
 
-    return {AccumEnum.ASSYMETRY : assym,
+    return EcalStats({AccumEnum.ASSYMETRY : assym,
             AccumEnum.WIDTH : width,
             AccumEnum.SPARSITY : sprsity,
-            AccumEnum.ENERGY : nrgy}
+            AccumEnum.ENERGY : nrgy})
 
-def runAnalytics(filename, ecalData, fakeData=None, ecalStats=None, fakeStats=None):
+
+class Layouts :
+    DISCOVER = 210
+    WITH_PREDEFINED = 220
+
+
+def runAnalytics(filename, ecalData, fakeData=None, ecalStats=None, fakeStats=None, predefinedRanges=None):
     print(ecalData.title)
 
     haveFake = fakeData is not None
-    plotUi = PUI.PDFPlotUi(dirname(dirname(__file__)) + filename + '_stats' + ('_generated' if haveFake else ''))  # PUI.ShowPlotUi()
+    outputfile = dirname(dirname(__file__)) + filename + '_stats' + ('_generated' if haveFake else '')
+    plotUi = PUI.PDFPlotUi(outputfile)  # PUI.ShowPlotUi()
 
     plotUi.toView(lambda: plotMeanWithTitle(ecalData.response, ecalData.title))
 
@@ -149,19 +177,35 @@ def runAnalytics(filename, ecalData, fakeData=None, ecalStats=None, fakeStats=No
     if ecalStats is None:
         ecalStats = optimized_analityc(ecalData, imgSize)
 
-    plotUi.toView(lambda: plotResponses(ecalData, fakeData=fakeData))
+    plotUi.toView(lambda: plotResponses(ecalData, True, fakeData))
     plotUi.toView(lambda: plotResponses(ecalData, False, fakeData))
 
-    plotUi.toView(lambda: doPlotAssymetry(ecalStats.get(AccumEnum.ASSYMETRY).assymNonOrtho, False, fakeStats.get(AccumEnum.ASSYMETRY).assymNonOrtho if haveFake else None))
-    plotUi.toView(lambda: doPlotAssymetry(ecalStats.get(AccumEnum.ASSYMETRY).assymOrtho, True, fakeStats.get(AccumEnum.ASSYMETRY).assymOrtho if haveFake else None))
+    havePredefined = predefinedRanges is not None
+    layout = Layouts.WITH_PREDEFINED if  havePredefined else Layouts.DISCOVER
 
-    plotUi.toView(lambda: doPlotShowerWidth(ecalStats.get(AccumEnum.WIDTH).widthNonOrtho, False, fakeStats.get(AccumEnum.WIDTH).widthNonOrtho if haveFake else None))
-    plotUi.toView(lambda: doPlotShowerWidth(ecalStats.get(AccumEnum.WIDTH).widthOrtho, True, fakeStats.get(AccumEnum.WIDTH).widthOrtho if haveFake else None))
+    def doPlot(func, statType, pos, orth, range=None):
+        pos = pos + 1
+        plt.subplot(pos)
+        func(ecalStats.get(statType, orth), orth,
+                        fakeStats.get(statType, orth) if haveFake else None, range)
+        return pos
 
-    es = ecalStats.get(AccumEnum.SPARSITY).sparsity
-    plotUi.toView(lambda: doPlotSparsity(es, ecalStats.get(AccumEnum.SPARSITY).alpha, fakeStats.get(AccumEnum.SPARSITY).sparsity if haveFake else None))
+    def doPlotStat(type, func, predef=havePredefined) :
+        position = layout
+        position = doPlot(func, type, position, False)
+        if predef : position = doPlot(func, type, position, False, range=predefinedRanges.get(type).get(False))
+        position = doPlot(func, type, position, True)
+        if predef : position = doPlot(func, type, position, True, range=predefinedRanges.get(type).get(True))
 
-    plotUi.toView(lambda: plotEnergies(ecalStats.get(AccumEnum.ENERGY).energies, fakeStats.get(AccumEnum.ENERGY).energies if haveFake else None))
+    plotUi.toView(lambda: doPlotStat(AccumEnum.ASSYMETRY, doPlotAssymetry))
+    plotUi.toView(lambda: doPlotStat(AccumEnum.WIDTH, doPlotShowerWidth))
+
+
+    es = ecalStats.get(AccumEnum.SPARSITY, True)
+    plotUi.toView(lambda: doPlotSparsity(es, ecalStats.get(AccumEnum.SPARSITY, False), fakeStats.get(AccumEnum.SPARSITY, True) if haveFake else None))
+
+    layout = Layouts.WITH_PREDEFINED if haveFake else Layouts.DISCOVER
+    plotUi.toView(lambda: doPlotStat(AccumEnum.ENERGY, plotEnergies, haveFake)) #this may look hacky, so it is =(
 
     plotUi.close()
     return ecalStats, fakeStats
@@ -170,5 +214,8 @@ def runAnalytics(filename, ecalData, fakeData=None, ecalStats=None, fakeStats=No
 def run():
     #runAnalytics('caloGAN_v3_case5_2K')
     dataset = 'caloGAN_v3_case4_2K'
-    es, fs = runAnalytics(dataset, ecalData = ED.parseEcalData(dataset))#, fakeData=ED.parseEcalData('caloGAN_v3_case5_2K'))
+    predefinedRanges={AccumEnum.ASSYMETRY : {True: [-0.8, -0.5], False: [-1.0, 0.6]},
+            AccumEnum.WIDTH : {True: [2.5, 7.0], False: [2.0, 7.5]},
+                      AccumEnum.ENERGY : {True: False, False: False}} #both False here, because we have logScaled as first boolean argument and rangeByExpectedOnly as second boolean
+    es, fs = runAnalytics('/' + dataset, ecalData = ED.parseEcalData(dataset), predefinedRanges=predefinedRanges)#, fakeData=ED.parseEcalData('caloGAN_v3_case5_2K'))
 #run()

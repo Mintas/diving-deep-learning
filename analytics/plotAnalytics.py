@@ -17,47 +17,51 @@ def plotMeanAbsDiff(ecal, fake) :
     plt.colorbar()
 
 
-def plotLogResponse(img, logScale):
-    plt.imshow(np.log10(img) if logScale else img, interpolation='nearest')
+def plotLogResponse(img, vmin=None, vmax=None):
+    plt.imshow(img, interpolation='nearest', vmin=vmin, vmax=vmax)
     # #todo : what to do if we got 0 as one of inputs here?
     plt.colorbar()
-    plt.xlabel('cell X \n')
+    #plt.xlabel('cell X \n')
     plt.ylabel('cell Y')
+    plt.xticks([])
+    plt.yticks([])
 
 def plotResponses(ecalData, logScale=True, fakeData = None):
     matplotlib.rcParams.update({'font.size': 14})
-    for i in range(4):
-        #print("im:", i)
-        #print("momentum", real_p[i])
-        # print ("fake", fake_p[i])
-        plt.subplot(521 + 2*i)  # todo : how to update this correctly ?
-        plotLogResponse(ecalData.response[i], logScale)
-        plt.subplot(521 + 2*i+1)
-        asFake = fakeData.response[i] if fakeData is not None else ecalData.response[-i]
-        plotLogResponse(asFake, logScale)
 
+    combined = np.append(ecalData.response[:4], fakeData.response[:4]) if fakeData is not None else ecalData.response[:8]
+    if logScale: combined = np.log10(combined)
+    vmin, vmax = np.amin(combined), np.amax(combined)
 
-def doPlotAssymetry(assymetry_real, orto, assymetry_fake = None):
-    plt.hist(assymetry_real, bins=50, range=[-1, 1], color='red', alpha=0.3, density=True, label='Geant')
+    for (i, response) in enumerate(combined):
+        plt.subplot(521 + i)  # todo : how to update this correctly ?
+        plotLogResponse(response, vmin, vmax)
+
+def doPlotAssymetry(assymetry_real, orto, assymetry_fake = None, range=None):
+    postfix = ', narrow hist'
+    if range is None: range, postfix = [-1, 1], ''
+    plt.hist(assymetry_real, bins=50, range=range, color='red', alpha=0.3, density=True, label='Geant')
     if assymetry_fake is not None:
-        plt.hist(assymetry_fake,bins=50, range=[-1, 1], color='blue', alpha=0.3, density=True, label='GAN')
-    plt.xlabel(('Longitudual' if orto else 'Transverse') + ' cluster asymmetry')
+        plt.hist(assymetry_fake,bins=50, range=range, color='blue', alpha=0.3, density=True, label='GAN')
+    plt.xlabel(('Longitudual' if orto else 'Transverse') + ' cluster asymmetry' + postfix)
     plt.legend(loc='best')
 
-def plotAssymWithNpHist(ecalAssym):
+def plotAssymWithNpHist(ecalAssym): #currently unused, represents template for stats calc
     #1st step : calculate histogram
     assymHist, binz = np.histogram(ecalAssym, bins=50, range=[-1, 1], density=True)
     #2nd step : plot hist by weights; is equal to plt.hist(ecalAssym, bins=.....)
     plt.hist(binz[:-1], bins=len(binz), weights=assymHist, range=[-1, 1], color='red', alpha=0.3, density=True, label='Geant')
 
-def doPlotShowerWidth(ecalWidth, orto, fakeWidth = None):
+def doPlotShowerWidth(ecalWidth, orto, fakeWidth = None, range=None):
+    postfix = ', narrow hist'
+    if range is None: range, postfix = [0,15], ''
     matplotlib.rcParams.update({'font.size': 14})
-    plt.hist(ecalWidth, bins=50, range=[0, 15], density=True, alpha=0.3, color='red', label='Geant')
+    plt.hist(ecalWidth, bins=50, range=range, density=True, alpha=0.3, color='red', label='Geant')
 
     if fakeWidth is not None:
-        plt.hist(fakeWidth, bins=50, range=[0, 15], density=True, alpha=0.3, color='blue', label='GAN')
+        plt.hist(fakeWidth, bins=50, range=range, density=True, alpha=0.3, color='blue', label='GAN')
     plt.legend(loc='best')
-    plt.xlabel(('Longitudual' if orto else 'Transverse') + ' cluster width [cm]')
+    plt.xlabel(('Longitudual' if orto else 'Transverse') + ' cluster width [cm]' + postfix)
     plt.ylabel('Arbitrary units')
 
 
@@ -83,18 +87,20 @@ def doPlotSparsity(ecalSparsity, alpha, fakeSparsity=None):
     plt.ylabel('Fraction of cells above threshold')
 
 
-def plotEnergies(ecal, fake=None) :
+def plotEnergies(ecal, logScaled, fake=None, rangeByExpectedOnly=True):
     maxE = max(ecal)
-    if fake is not None:
+    minE = min(ecal)
+    if fake is not None and not rangeByExpectedOnly:
         maxE = max(maxE, max(fake))
+        minE = min(minE, min(fake))
 
-    plt.hist(ecal, 100, range=[0, maxE], log=True, color='red', alpha=0.3)
+    plt.hist(ecal, 100, range=[minE, maxE], log=logScaled, color='red', alpha=0.3)
     legend = ['Geant']
 
     if fake is not None:
-        plt.hist(fake, 100, range=[0, maxE], log=True, color='blue', alpha=0.3)
+        plt.hist(fake, 100, range=[minE, maxE], log=logScaled, color='blue', alpha=0.3)
         legend.append('GAN')
 
     plt.legend(legend)
     plt.xlabel('Energy')
-    plt.ylabel('Arbitrary Units')
+    plt.ylabel('Arbitrary Units' + ', LogScale' if logScaled else '')
