@@ -1,4 +1,5 @@
 import numpy as np
+import scipy.stats as sps
 
 
 def doLineFunc(orthog, p, x0, y0):
@@ -51,3 +52,13 @@ def computeMsRatio2(alpha, img, sumImg):
     ms_ = sumImg * alpha
     num = np.sum((img >= ms_))
     return num / imsize**2
+
+#Distances between histograms
+def chiSquare(observed, expected):
+    return sps.chisquare(observed, expected)
+
+def l2norm(observed, expected):
+    return np.linalg.norm(observed - expected)
+
+def l1norm(observed, expected):
+    return np.linalg.norm(observed - expected, ord=1)

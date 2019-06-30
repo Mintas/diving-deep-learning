@@ -181,7 +181,7 @@ def runAnalytics(filename, ecalData, fakeData=None, ecalStats=None, fakeStats=No
     plotUi.toView(lambda: plotResponses(ecalData, False, fakeData))
 
     havePredefined = predefinedRanges is not None
-    layout = Layouts.WITH_PREDEFINED if  havePredefined else Layouts.DISCOVER
+    layout = Layouts.WITH_PREDEFINED if havePredefined else Layouts.DISCOVER
 
     def doPlot(func, statType, pos, orth, range=None):
         pos = pos + 1
@@ -217,5 +217,5 @@ def run():
     predefinedRanges={AccumEnum.ASSYMETRY : {True: [-0.8, -0.5], False: [-1.0, 0.6]},
             AccumEnum.WIDTH : {True: [2.5, 7.0], False: [2.0, 7.5]},
                       AccumEnum.ENERGY : {True: False, False: False}} #both False here, because we have logScaled as first boolean argument and rangeByExpectedOnly as second boolean
-    es, fs = runAnalytics('/' + dataset, ecalData = ED.parseEcalData(dataset), predefinedRanges=predefinedRanges)#, fakeData=ED.parseEcalData('caloGAN_v3_case5_2K'))
+    es, fs = runAnalytics('/' + dataset, ecalData = ED.parseEcalData(dataset), predefinedRanges=predefinedRanges, fakeData=ED.parseEcalData('caloGAN_v3_case5_2K'))
 #run()
