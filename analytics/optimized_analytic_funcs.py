@@ -3,7 +3,7 @@ from os.path import dirname
 
 import analytics.plotAnalytics
 from analytics.plotAnalytics import doPlotAssymetry, doPlotShowerWidth, doPlotSparsity, plotMeanWithTitle, \
-    plotMeanAbsDiff, plotResponses, plotEnergies
+    plotMeanAbsDiff, plotResponses, plotEnergies, comonHistRange, plotResponseImg
 from analytics import analytic_funcs as AF
 from scipy.interpolate import interp2d
 ##include math
@@ -152,50 +152,64 @@ def optimized_analityc(ecalData, imgsize) :
 
 class Layouts :
     DISCOVER = 210
-    WITH_PREDEFINED = 220
+    GENERATED = 220
 
 
-def runAnalytics(filename, ecalData, fakeData=None, ecalStats=None, fakeStats=None, predefinedRanges=None):
+def runAnalytics(filename, ecalData, fakeData=None, ecalStats=None, fakeStats=None):
     print(ecalData.title)
 
     haveFake = fakeData is not None
     outputfile = dirname(dirname(__file__)) + filename + '_stats' + ('_generated' if haveFake else '')
     plotUi = PUI.PDFPlotUi(outputfile)  # PUI.ShowPlotUi()
 
-    plotUi.toView(lambda: plotMeanWithTitle(ecalData.response, ecalData.title))
-
     imgSize = ecalData.response[0].shape[0]
     if haveFake:
-        print(fakeData.title)
-        plotUi.toView(lambda: plotMeanWithTitle(fakeData.response, fakeData.title))
+        ecalMean, fakeMean = np.mean(ecalData.response, axis=0, keepdims=False), np.mean(fakeData.response, axis=0, keepdims=False)
+        commonRange, xPostfix = comonHistRange(ecalMean, fakeMean, False)
 
-        if (ecalData.response.shape[0] == fakeData.response.shape[0]) :
-            plotUi.toView(lambda: plotMeanAbsDiff(ecalData.response, fakeData.response))
+        print(fakeData.title)
+        def plotMeans():
+            plt.suptitle('ECAL: mean response of deposited energy', fontsize=16)
+
+            plt.subplot(Layouts.GENERATED + 1)
+            plt.title(ecalData.title)
+            plotResponseImg(ecalMean, vmin=commonRange[0], vmax=commonRange[1], removeTicks=False)
+
+            plt.subplot(Layouts.GENERATED + 2)
+            plt.title(fakeData.title)
+            plotResponseImg(fakeMean, vmin=commonRange[0], vmax=commonRange[1], removeTicks=False)
+
+            if (ecalData.response.shape[0] == fakeData.response.shape[0]):
+                plt.subplot(Layouts.GENERATED + 3)
+                plotResponseImg(abs(ecalMean - fakeMean), vmin=commonRange[0], vmax=commonRange[1], removeTicks=False)
+        plotUi.toView(plotMeans)
 
         if fakeStats is None:
             fakeStats = optimized_analityc(fakeData, imgSize)
+    else:
+        plotUi.toView(lambda: plotMeanWithTitle(ecalData.response, ecalData.title))
+
     if ecalStats is None:
         ecalStats = optimized_analityc(ecalData, imgSize)
 
     plotUi.toView(lambda: plotResponses(ecalData, True, fakeData))
     plotUi.toView(lambda: plotResponses(ecalData, False, fakeData))
 
-    havePredefined = predefinedRanges is not None
-    layout = Layouts.WITH_PREDEFINED if havePredefined else Layouts.DISCOVER
+    layout = Layouts.GENERATED if haveFake else Layouts.DISCOVER
 
-    def doPlot(func, statType, pos, orth, range=None):
+    def doPlot(func, statType, pos, orth, range=True):
         pos = pos + 1
         plt.subplot(pos)
         func(ecalStats.get(statType, orth), orth,
                         fakeStats.get(statType, orth) if haveFake else None, range)
         return pos
 
-    def doPlotStat(type, func, predef=havePredefined) :
+    def doPlotStat(type, func):
         position = layout
         position = doPlot(func, type, position, False)
-        if predef : position = doPlot(func, type, position, False, range=predefinedRanges.get(type).get(False))
+        if haveFake : position = doPlot(func, type, position, False, range=False)
         position = doPlot(func, type, position, True)
-        if predef : position = doPlot(func, type, position, True, range=predefinedRanges.get(type).get(True))
+        if haveFake : position = doPlot(func, type, position, True, range=False)
 
     plotUi.toView(lambda: doPlotStat(AccumEnum.ASSYMETRY, doPlotAssymetry))
     plotUi.toView(lambda: doPlotStat(AccumEnum.WIDTH, doPlotShowerWidth))
@@ -204,8 +218,7 @@ def runAnalytics(filename, ecalData, fakeData=None, ecalStats=None, fakeStats=No
     es = ecalStats.get(AccumEnum.SPARSITY, True)
     plotUi.toView(lambda: doPlotSparsity(es, ecalStats.get(AccumEnum.SPARSITY, False), fakeStats.get(AccumEnum.SPARSITY, True) if haveFake else None))
 
-    layout = Layouts.WITH_PREDEFINED if haveFake else Layouts.DISCOVER
-    plotUi.toView(lambda: doPlotStat(AccumEnum.ENERGY, plotEnergies, haveFake)) #this may look hacky, so it is =(
+    plotUi.toView(lambda: doPlotStat(AccumEnum.ENERGY, plotEnergies))
 
     plotUi.close()
     return ecalStats, fakeStats
@@ -217,5 +230,5 @@ def run():
     predefinedRanges={AccumEnum.ASSYMETRY : {True: [-0.8, -0.5], False: [-1.0, 0.6]},
             AccumEnum.WIDTH : {True: [2.5, 7.0], False: [2.0, 7.5]},
                       AccumEnum.ENERGY : {True: False, False: False}} #both False here, because we have logScaled as first boolean argument and rangeByExpectedOnly as second boolean
-    es, fs = runAnalytics('/' + dataset, ecalData = ED.parseEcalData(dataset), predefinedRanges=predefinedRanges, fakeData=ED.parseEcalData('caloGAN_v3_case5_2K'))
-#run()
+    es, fs = runAnalytics('/' + dataset, ecalData = ED.parseEcalData(dataset), fakeData=ED.parseEcalData('caloGAN_v3_case5_2K'))
+run()

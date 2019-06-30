@@ -21,10 +21,11 @@ def dictToEcalData(ecal):
     real_imgs = ecal['EnergyDeposit']
     real_p = ecal['ParticleMomentum']
     real_point = ecal['ParticlePoint']
+    rounded = lambda num : str(np.round(num, 3))
     title = 'EnergyDeposit  shape: ' + str(real_imgs.shape) + \
-            '\n min: ' + str(real_imgs.min()) + '\t max: ' + str(real_imgs.max()) + \
-            '\n first particle Momentum :  ' + str(real_p[0]) + \
-            '\n Point :' + str(real_point[0]) + \
+            '\n min: ' + rounded(real_imgs.min()) + '; max: ' + rounded(real_imgs.max()) + \
+            '\n first particle Momentum :  ' + rounded(real_p[0]) + \
+            '\n Point :' + rounded(real_point[0]) + \
             '\n particle type is : ' + str(ecal['ParticlePDG'][0])
     return EcalData(real_imgs, real_p, real_point, title)
 
