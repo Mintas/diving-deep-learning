@@ -231,4 +231,4 @@ def run():
             AccumEnum.WIDTH : {True: [2.5, 7.0], False: [2.0, 7.5]},
                       AccumEnum.ENERGY : {True: False, False: False}} #both False here, because we have logScaled as first boolean argument and rangeByExpectedOnly as second boolean
     es, fs = runAnalytics('/' + dataset, ecalData = ED.parseEcalData(dataset), fakeData=ED.parseEcalData('caloGAN_v3_case5_2K'))
-run()
+#run()
