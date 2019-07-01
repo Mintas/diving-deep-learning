@@ -9,17 +9,20 @@ def plotMean(imgs):
 
 
 def plotMeanWithTitle(imgs, title):
+    matplotlib.rcParams.update({'font.size': 13})
     plt.suptitle('ECAL: mean response of deposited energy', fontsize=16)
     plt.title(title)
     plotMean(imgs)
 
 
 def plotMeanAbsDiff(ecal, fake) :
+    matplotlib.rcParams.update({'font.size': 13})
     plt.imshow(abs(np.mean(ecal, axis=0, keepdims=False) - np.mean(fake, axis=0, keepdims=False)))
     plt.colorbar()
 
 
 def plotResponseImg(img, vmin=None, vmax=None, removeTicks=True):
+    matplotlib.rcParams.update({'font.size': 13})
     plt.imshow(img, interpolation='nearest', vmin=vmin, vmax=vmax)
     # #todo : what to do if we got 0 as one of inputs here?
     plt.colorbar()
@@ -37,11 +40,12 @@ def plotResponses(ecalData, logScale=True, fakeData = None):
 
     combined = np.concatenate((ecalData.response[:4], fakeData.response[:4])) if fakeData is not None else ecalData.response[:8]
     if logScale: combined = np.log10(combined)
-    vmin, vmax = np.amin(combined), np.amax(combined)
+    vmin, vmax = np.amin(np.ma.masked_invalid(combined)), np.amax(combined)
 
     for i in range(8):
         plt.subplot(421 + i)  # todo : how to update this correctly ?
         plotResponseImg(combined[4 * (i % 2) + i // 2], vmin, vmax)
+        #plotResponseImg(combined[4 * (i % 2) + i // 2], None, None)
 
 def doPlotAssymetry(assymetry_real, orto, assymetry_fake = None, rangeByReal=True):
     range, postfix = comonHistRange(assymetry_real, assymetry_fake, rangeByReal)
@@ -76,7 +80,7 @@ def doPlotShowerWidth(ecalWidth, orto, fakeWidth = None, rangeByReal=True):
         histFake,_,_ = plt.hist(fakeWidth, bins=50, range=range, density=True, alpha=0.3, color='blue', label='GAN')
         postfix += '\n' + statsMsg(histFake, histReal)
     plt.legend(loc='best')
-    plt.xlabel(('Longitudual' if orto else 'Transverse') + ' cluster width [cm]' + postfix)
+    plt.xlabel(('Longitudinal' if orto else 'Transverse') + ' cluster width [cm]' + postfix)
     plt.ylabel('Arbitrary units')
 
 
