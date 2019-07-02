@@ -62,3 +62,10 @@ def l2norm(observed, expected):
 
 def l1norm(observed, expected):
     return np.linalg.norm(observed - expected, ord=1)
+
+#image crop
+def cropCenter(img, cropx, cropy):
+    y,x = img.shape
+    startx = x//2-(cropx//2)
+    starty = y//2-(cropy//2)
+    return img[starty:starty+cropy,startx:startx+cropx]

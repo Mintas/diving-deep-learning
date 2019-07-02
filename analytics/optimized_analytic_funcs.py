@@ -61,21 +61,6 @@ class ShowerWidthAccumulator :
         return self.widthOrtho if ortho else self.widthNonOrtho
 
 
-# class ShiftAccumulator :
-#     def __init__(self, imgSize) -> None:
-#         self.imgSize = imgSize
-#         self.shifts = []
-#         self.zoff = 25.
-#         bound = imgSize/2.0 - 0.5
-#         x = np.linspace(-bound, bound, imgSize)
-#         y = np.linspace(-bound, bound, imgSize)
-#         self.xx, self.yy = np.meshgrid(x, y)
-#
-#     def append(self, momentum, img, lineOrt, lineNotOrt, sumImg):
-#         self.assymOrtho.append(AF.doComputeAssym(img, lineOrt, momentum, True, self.xx, self.yy, sumImg))
-#         self.assymNonOrtho.append(AF.doComputeAssym(img, lineNotOrt, momentum, True, self.xx, self.yy, sumImg))
-
-
 class SparsityAccumulator :
     def __init__(self) -> None:
         self.alpha = np.linspace(-5, 0, 50)
@@ -101,11 +86,34 @@ class EnergyResponseAccumulator :
     def get(self, ignored=True):
         return self.energies
 
+class ClusterShapeAccumulator : #this one accumulates center-wise energy deposits with borders of width 2
+    def __init__(self, imgSize) -> None:
+        self.imgSize = imgSize
+        self.energies = {}
+        for crop in range(min(16, imgSize), min(1, imgSize), -2):
+            self.energies[crop] = []
+
+    def append(self, img, sumImg):
+        prevImg, prevCrop, prevN, prevAcc = img/sumImg, 0, 0, [] #todo : divide or not? here we also can divide by sumImg to compute relative statistics
+        for crop,nrg in self.energies.items():
+            curCropImg = AF.cropCenter(prevImg, crop, crop)
+            curN = np.sum(curCropImg)
+            if (prevCrop > 0):
+                prevAcc.append(prevN - curN)
+            if (crop == 2): #the expected minimal center crop
+                nrg.append(curN)
+            else:
+                prevImg, prevCrop, prevN, prevAcc = curCropImg, crop, curN, nrg
+
+    def get(self, ignored=True):
+        return self.energies
+
 class AccumEnum :
     ASSYMETRY = "A"
     WIDTH = "W"
     SPARSITY = "S"
     ENERGY = "ER"
+    CLUSTER_SHAPE = "CS"
 
 class EcalStats :
     def __init__(self, statsDict) -> None:
@@ -124,6 +132,7 @@ def optimized_analityc(ecalData, imgsize) :
     width = ShowerWidthAccumulator(imgsize)
     sprsity = SparsityAccumulator()
     nrgy = EnergyResponseAccumulator()
+    clusterShape = ClusterShapeAccumulator(imgsize)
 
     for i in range(len(response)) :
         img = response[i]
@@ -138,6 +147,7 @@ def optimized_analityc(ecalData, imgsize) :
         lfNotOrthog = AF.doLineFunc(False, p, x0, y0)
 
         nrgy.append(p, sumImg)
+        clusterShape.append(img, sumImg)
         assym.append(p, img, lfOrthog, lfNotOrthog, sumImg)
         if i <= 10000 :
             width.append(p, img, lfOrthog, lfNotOrthog)
@@ -147,7 +157,8 @@ def optimized_analityc(ecalData, imgsize) :
     return EcalStats({AccumEnum.ASSYMETRY : assym,
             AccumEnum.WIDTH : width,
             AccumEnum.SPARSITY : sprsity,
-            AccumEnum.ENERGY : nrgy})
+            AccumEnum.ENERGY : nrgy,
+            AccumEnum.CLUSTER_SHAPE : clusterShape})
 
 
 class Layouts :
@@ -218,7 +229,14 @@ def runAnalytics(filename, ecalData, fakeData=None, ecalStats=None, fakeStats=No
     es = ecalStats.get(AccumEnum.SPARSITY, True)
     plotUi.toView(lambda: doPlotSparsity(es, ecalStats.get(AccumEnum.SPARSITY, False), fakeStats.get(AccumEnum.SPARSITY, True) if haveFake else None))
 
-    plotUi.toView(lambda: doPlotStat(AccumEnum.ENERGY, plotEnergies))
+    plotUi.toView(lambda: doPlotStat(AccumEnum.ENERGY, lambda e, o, f, r: plotEnergies(e, o, f, r, imgSize)))
+
+    def plotClusterShape(crop):
+        return lambda e, o, f, r: plotEnergies(e.get(crop), o, f.get(crop) if haveFake else None, r, crop)
+
+    for crop in ecalStats.get(AccumEnum.CLUSTER_SHAPE, True):
+        plotUi.toView(lambda: doPlotStat(AccumEnum.CLUSTER_SHAPE, plotClusterShape(crop)))
+
 
     plotUi.close()
     return ecalStats, fakeStats

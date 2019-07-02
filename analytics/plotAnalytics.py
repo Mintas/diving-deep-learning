@@ -106,7 +106,8 @@ def doPlotSparsity(ecalSparsity, alpha, fakeSparsity=None):
     plt.ylabel('Fraction of cells above threshold')
 
 
-def plotEnergies(ecal, logScaled, fake=None, rangeByReal=True):
+def plotEnergies(ecal, logScaled, fake=None, rangeByReal=True, size=30):
+    plt.suptitle('Energy deposited in {}x{} '.format(size, size), fontsize=16)
     yPostfix = ', LogScale' if logScaled else ''
     commonRange, xPostfix = comonHistRange(ecal, fake, rangeByReal)
 
