@@ -29,16 +29,20 @@ class PDFPlotUi():
             i = i + 1
             lookupNextName = pdfFile + '_' + str(i)
         self.pdf = pltpdf.PdfPages(lookupNextName + '.pdf')
+        self.lastFig = None
 
     def toView(self, plot):
-        fig = self.figure()
+        self.figure()
         plot()
-        self.show(fig)
+        self.show()
 
     def figure(self):
-        return plt.figure(figsize=(10, 10))
+        figure = plt.figure(figsize=(10, 10))
+        self.lastFig = figure
+        return figure
 
-    def show(self, fig):
+    def show(self, fig=None):
+        if fig is None: fig = self.lastFig
         self.pdf.savefig(fig)
 
     def close(self):

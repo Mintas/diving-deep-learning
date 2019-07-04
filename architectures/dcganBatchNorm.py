@@ -15,10 +15,8 @@ class DiscEcal(nn.Module):
         stride = 2
         self.main = nn.Sequential(
              nn.Conv2d(problem.nc, problem.nf, 2, stride, 1, bias=False), nn.LeakyReLU(0.2),
-             nn.Conv2d(problem.nf, nfx2, kernel_size, stride, 1, bias=False),
-             nn.LeakyReLU(0.2),
-             nn.Conv2d(nfx2, nfx4, kernel_size, stride, 1, bias=False),
-             nn.LeakyReLU(0.2),
+             nn.Conv2d(problem.nf, nfx2, kernel_size, stride, 1, bias=False), nn.LeakyReLU(0.2),
+             nn.Conv2d(nfx2, nfx4, kernel_size, stride, 1, bias=False), nn.LeakyReLU(0.2),
              nn.Conv2d(nfx4, 1, kernel_size, 1, 0, bias=False)
         )
 
@@ -49,7 +47,6 @@ class GenEcal(nn.Module):
             nn.ConvTranspose2d(problem.nf, problem.nc, 2, stride, 1, bias=False),
             nn.ReLU() # ReLU here, because we need 0+ values
         )
-
 
     def forward(self, x):
         return self.main(x)

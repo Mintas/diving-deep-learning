@@ -3,13 +3,14 @@ from os.path import dirname
 
 import analytics.plotAnalytics
 from analytics.plotAnalytics import doPlotAssymetry, doPlotShowerWidth, doPlotSparsity, plotMeanWithTitle, \
-    plotMeanAbsDiff, plotResponses, plotEnergies, comonHistRange, plotResponseImg
+    plotMeanAbsDiff, plotResponses, plotEnergies, comonHistRange, plotResponseImg, doPlotClShape
 from analytics import analytic_funcs as AF
 from scipy.interpolate import interp2d
 ##include math
 import domain.ecaldata as ED
 import plots.plotUi as PUI
 import matplotlib.pyplot as plt
+import matplotlib
 
 #Below we define set of statistic accumulators, required methods are append(customargs) and get(flag)
 
@@ -94,7 +95,7 @@ class ClusterShapeAccumulator : #this one accumulates center-wise energy deposit
             self.energies[crop] = []
 
     def append(self, img, sumImg):
-        prevImg, prevCrop, prevN, prevAcc = img/sumImg, 0, 0, [] #todo : divide or not? here we also can divide by sumImg to compute relative statistics
+        prevImg, prevCrop, prevN, prevAcc = img, 0, 0, [] #todo : divide or not? here we also can divide by sumImg to compute relative statistics
         for crop,nrg in self.energies.items():
             curCropImg = AF.cropCenter(prevImg, crop, crop)
             curN = np.sum(curCropImg)
@@ -166,19 +167,14 @@ class Layouts :
     GENERATED = 220
 
 
-def runAnalytics(filename, ecalData, fakeData=None, ecalStats=None, fakeStats=None):
-    print(ecalData.title)
-
-    haveFake = fakeData is not None
-    outputfile = dirname(dirname(__file__)) + filename + '_stats' + ('_generated' if haveFake else '')
-    plotUi = PUI.PDFPlotUi(outputfile)  # PUI.ShowPlotUi()
-
-    imgSize = ecalData.response[0].shape[0]
+def runPlotMeans(ecalData, fakeData, haveFake, plotUi):
     if haveFake:
-        ecalMean, fakeMean = np.mean(ecalData.response, axis=0, keepdims=False), np.mean(fakeData.response, axis=0, keepdims=False)
+        ecalMean, fakeMean = np.mean(ecalData.response, axis=0, keepdims=False), np.mean(fakeData.response, axis=0,
+                                                                                         keepdims=False)
         commonRange, xPostfix = comonHistRange(ecalMean, fakeMean, False)
 
         print(fakeData.title)
+
         def plotMeans():
             plt.suptitle('ECAL: mean response of deposited energy', fontsize=16)
 
@@ -193,50 +189,73 @@ def runAnalytics(filename, ecalData, fakeData=None, ecalStats=None, fakeStats=No
             if (ecalData.response.shape[0] == fakeData.response.shape[0]):
                 plt.subplot(Layouts.GENERATED + 3)
                 plotResponseImg(abs(ecalMean - fakeMean), vmin=commonRange[0], vmax=commonRange[1], removeTicks=False)
-        plotUi.toView(plotMeans)
 
-        if fakeStats is None:
-            fakeStats = optimized_analityc(fakeData, imgSize)
+        plotUi.toView(plotMeans)
     else:
         plotUi.toView(lambda: plotMeanWithTitle(ecalData.response, ecalData.title))
 
+
+def runAnalytics(filename, ecalData, fakeData=None, ecalStats=None, fakeStats=None):
+    print(ecalData.title)
+    matplotlib.rcParams.update({'font.size': 13})
+
+
+    haveFake = fakeData is not None
+    outputfile = dirname(dirname(__file__)) + filename + '_stats' + ('_generated' if haveFake else '')
+    plotUi = PUI.PDFPlotUi(outputfile)  # PUI.ShowPlotUi()
+
+    imgSize = ecalData.response[0].shape[0]
+    runPlotMeans(ecalData, fakeData, haveFake, plotUi)
+
     if ecalStats is None:
         ecalStats = optimized_analityc(ecalData, imgSize)
+    if haveFake and fakeStats is None:
+        fakeStats = optimized_analityc(fakeData, imgSize)
 
     plotUi.toView(lambda: plotResponses(ecalData, True, fakeData))
     plotUi.toView(lambda: plotResponses(ecalData, False, fakeData))
 
     layout = Layouts.GENERATED if haveFake else Layouts.DISCOVER
 
-    def doPlot(func, statType, pos, orth, range=True):
+    def runSubplot(func, statType, pos, orth, range=True):
         pos = pos + 1
         plt.subplot(pos)
         func(ecalStats.get(statType, orth), orth,
                         fakeStats.get(statType, orth) if haveFake else None, range)
         return pos
 
-    def doPlotStat(type, func):
+    def runPlotLayoutSublots(type, func):
         position = layout
-        position = doPlot(func, type, position, False)
-        if haveFake : position = doPlot(func, type, position, False, range=False)
-        position = doPlot(func, type, position, True)
-        if haveFake : position = doPlot(func, type, position, True, range=False)
+        position = runSubplot(func, type, position, False)
+        if haveFake : position = runSubplot(func, type, position, False, range=False)
+        position = runSubplot(func, type, position, True)
+        if haveFake : position = runSubplot(func, type, position, True, range=False)
 
-    plotUi.toView(lambda: doPlotStat(AccumEnum.ASSYMETRY, doPlotAssymetry))
-    plotUi.toView(lambda: doPlotStat(AccumEnum.WIDTH, doPlotShowerWidth))
+    plotUi.toView(lambda: runPlotLayoutSublots(AccumEnum.ASSYMETRY, doPlotAssymetry))
+    plotUi.toView(lambda: runPlotLayoutSublots(AccumEnum.WIDTH, doPlotShowerWidth))
 
 
     es = ecalStats.get(AccumEnum.SPARSITY, True)
     plotUi.toView(lambda: doPlotSparsity(es, ecalStats.get(AccumEnum.SPARSITY, False), fakeStats.get(AccumEnum.SPARSITY, True) if haveFake else None))
 
-    plotUi.toView(lambda: doPlotStat(AccumEnum.ENERGY, lambda e, o, f, r: plotEnergies(e, o, f, r, imgSize)))
+    plotUi.toView(lambda: runPlotLayoutSublots(AccumEnum.ENERGY, lambda e, o, f, r: plotEnergies(e, o, f, r, imgSize)))
 
-    def plotClusterShape(crop):
-        return lambda e, o, f, r: plotEnergies(e.get(crop), o, f.get(crop) if haveFake else None, r, crop)
+    def doPlotCS(ecal, logScaled, fake, allPoints, cropSize):
+        plt.suptitle('Cluster Shape E_c/E_total for c={}x{} '.format(cropSize, cropSize), fontsize=16)
+        doPlotClShape(ecalStats.get(AccumEnum.ENERGY), ecal, logScaled,
+                        fakeStats.get(AccumEnum.ENERGY) if haveFake else None,
+                        fake if haveFake else None, allPoints)
+
+    def runPlotClusterShapeStatistics(crop):
+        runPlotLayoutSublots(AccumEnum.CLUSTER_SHAPE,
+                             lambda e, o, f, r: doPlotCS(e.get(crop), o, f.get(crop) if haveFake else None, r, crop))
+        plotUi.show()
+        plotUi.figure()
+        runPlotLayoutSublots(AccumEnum.CLUSTER_SHAPE,
+                             lambda e, o, f, r: plotEnergies(e.get(crop), o, f.get(crop) if haveFake else None, r, crop))
 
     for crop in ecalStats.get(AccumEnum.CLUSTER_SHAPE, True):
-        plotUi.toView(lambda: doPlotStat(AccumEnum.CLUSTER_SHAPE, plotClusterShape(crop)))
-
+        plotUi.toView(lambda: runPlotClusterShapeStatistics(crop))
 
     plotUi.close()
     return ecalStats, fakeStats
