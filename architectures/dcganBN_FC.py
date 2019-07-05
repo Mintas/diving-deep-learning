@@ -1,6 +1,7 @@
 import torch.nn as nn
 import torch.nn.functional as F
 import mygan
+import torch
 
 # DCGAN, use optAdam or optRMSProp optimizers
 #
@@ -34,8 +35,8 @@ class GenEcal(nn.Module):
         stride = 2
         self.nfx4 = problem.nf * 4
         self.nfx2 = problem.nf * 2
+        self.fcrelu = nn.Sequential(nn.Linear(problem.nz, problem.nz), nn.ReLU())
         self.main = nn.Sequential(
-            nn.Linear(problem.nz, problem.nz), nn.ReLU(),
             #output 120x4x4
             nn.ConvTranspose2d(problem.nz, self.nfx4, kernel_size, 1, 0, bias=False), nn.BatchNorm2d(self.nfx4),
             nn.ReLU(),
@@ -49,5 +50,8 @@ class GenEcal(nn.Module):
             nn.ReLU() # ReLU here, because we need 0+ values
         )
 
-    def forward(self, x):
-        return self.main(x)
+    def forward(self, z):
+        zs = z.shape
+        z = torch.reshape(z, (z.size(0), z.size(1)))
+        z = self.fcrelu(z)
+        return self.main(torch.reshape(z, zs))

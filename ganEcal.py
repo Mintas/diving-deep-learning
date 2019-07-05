@@ -12,7 +12,7 @@ import training.losses
 import training.optimDecorators
 from plots import painters, plotUi
 import mygan
-import architectures.dcgan02062019 as myzoo
+import architectures.dcganBN_FC as myzoo
 from training import trainer
 import numpy as np
 from serialization import iogan
@@ -134,4 +134,4 @@ def evalGan():
         OAF.runAnalytics(statFile, ecalData, fakeData)
 
 
-#trainGan()
+trainGan()
