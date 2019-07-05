@@ -35,7 +35,7 @@ class GenEcal(nn.Module):
         stride = 2
         self.nfx4 = problem.nf * 4
         self.nfx2 = problem.nf * 2
-        self.fcrelu = nn.Sequential(nn.Linear(problem.nz, problem.nz), nn.ReLU())
+        self.fcrelu = nn.Sequential(nn.Linear(problem.nz, problem.nz), nn.BatchNorm1d(problem.nz), nn.ReLU())
         self.main = nn.Sequential(
             #output 120x4x4
             nn.ConvTranspose2d(problem.nz, self.nfx4, kernel_size, 1, 0, bias=False), nn.BatchNorm2d(self.nfx4),

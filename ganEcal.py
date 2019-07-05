@@ -51,7 +51,7 @@ initOptimizer = training.optimDecorators.optRMSProp  # works almost as well for 
 
 # dataSet = myfuncs.ProbDistrDataset(torch.distributions.normal.Normal(0,1), 128000)
 datasetName = 'caloGAN_v3_case2_50K'
-archVersion = 'dcgan02062019' #arch version
+archVersion = 'dcganBNFC' #arch version
 
 resultingName = 'resources/computed/%s_%s' % (datasetName, archVersion)
 ganFile = resultingName
