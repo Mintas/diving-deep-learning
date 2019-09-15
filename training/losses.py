@@ -113,8 +113,8 @@ class CramerEneryGanLoss(object):
         D_x1 = D(reals0)
         fakes = torch.chunk(fake[0], 2)
         fake1 = fakes[0].detach()
-        D_G_z1 = D([fake1, realConditions[0]])
-        D_G_z2 = D([fakes[1].detach(), realConditions[1]]) #detach?
+        D_G_z1 = D([fake1, realConditions[0].detach()])
+        D_G_z2 = D([fakes[1].detach(), realConditions[1].detach()]) #detach?
 
         # Get gradient penalty; not by D, but as Critic(D, interpolated, fake)
         DCritic = lambda interp : self.critic(D(interp), D_G_z1)
