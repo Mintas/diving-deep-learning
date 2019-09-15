@@ -45,9 +45,8 @@ class Trainer(object):
         iters = 0
         for epoch in range(computedEpochs, num_epochs + computedEpochs + 1):
             for i, data in enumerate(dataLoader, 0):
-                data[0].to(self.device)
-                data[1].to(self.device)
-                real = data
+
+                real = [data[0].to(self.device) ,data[1].to(self.device)]
                 if not savedNoise :
                     fixed_noise.append(real[1][:fixedNoiseCount])
 
