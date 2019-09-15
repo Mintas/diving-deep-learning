@@ -25,7 +25,7 @@ class DiscEcal(nn.Module):
         x = input[0]
         x = x.view(x.shape[0], -1)
          #here, we concat image with condition and pass to FC
-        output = self.main(torch.cat([x, input[1]], 1))
+        output = self.main(catGpu(x, input[1], self.ngpu))
         if self.type == mygan.GANS.GAN :
             output = F.sigmoid(output)
         return output
@@ -33,6 +33,7 @@ class DiscEcal(nn.Module):
 class GenEcal(nn.Module):
     def __init__(self, type, hyper, problem):
         super(GenEcal, self).__init__()
+        self.ngpu = hyper.ngpu
         self.nc = problem.nc
         self.imgSize = problem.imgSize
         self.inputSize = problem.nz + problem.cs #for generation, concat condition with Z vector
@@ -52,5 +53,11 @@ class GenEcal(nn.Module):
 
     def forward(self, input):
         z = input[0]
-        imgVector = self.main(torch.cat([z, input[1]], 1))
+        imgVector = self.main(catGpu(z, input[1], self.ngpu))
         return torch.reshape(imgVector, (z.size(0), self.nc, self.imgSize, self.imgSize))
+
+def catGpu(asArray, condition, ngpu):
+    concatenation = torch.cat([asArray, condition], 1)
+    if (torch.cuda.is_available() and ngpu > 0) :
+        concatenation.cuda()
+    return concatenation
