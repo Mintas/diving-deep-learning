@@ -12,7 +12,7 @@ class DiscEcal(nn.Module):
         self.type = type
         self.inputSize = problem.nc * (problem.imgSize ** 2)
         nf = problem.nz + problem.nf
-        self.finalLayerSize = nf + problem.nc
+        self.finalLayerSize = nf + problem.cs
         nfx2 = nf * 2
         nfx4 = nf * 4
         self.main = nn.Sequential(
