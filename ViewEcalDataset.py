@@ -15,10 +15,11 @@ from serialization import iogan
 # ParticleMomentum = ecal['ParticleMomentum']
 # ParticlePDG=ecal['ParticlePDG']  #here we got only vector with constant 22
 
-dataset = 'caloGAN_v3_case4_2K' #'caloGAN_v3_case2_50K'#'caloGAN_v3_case4_2K'
+dataset = 'caloGAN_v4_case0_50K' #'caloGAN_v3_case2_50K'#'caloGAN_v3_case4_2K'
 data = ED.parseEcalData(dataset)
 
-size = 8
+for i in range(1,100) :
+    print(data.momentum[i*10], data.point[i*10])
 
 # resize = tvtf.Compose([
 #     tvtf.ToPILImage(),
@@ -28,20 +29,20 @@ size = 8
 # responseResized = np.array([resize(np.float32(img))[0].numpy() for img in data.response])
 # dataResized = ED.EcalData(responseResized, data.momentum, data.point, data.title)
 
-dataResized = ED.resizeResponses(data, size)
+# dataResized = ED.resizeResponses(data, size)
 
 # fig = plt.figure(figsize=(10, 10))
 # AF.plotResponses(dataResized)
 # fig.show()
 
-outputName = dataset + '_resizedto_' + str(size)
-if not iogan.isFilePresent(outputName):
-    sizedAnalytic = OAF.optimized_analityc(dataResized, size)
-    torch.save(sizedAnalytic, outputName + iogan.EXTENSION)
-else:
-    sizedAnalytic = torch.load(outputName + iogan.EXTENSION)
-
-OAF.runAnalytics('/resources/resized/' + outputName, dataResized, ecalStats=sizedAnalytic)
+# outputName = dataset + '_resizedto_' + str(size)
+# if not iogan.isFilePresent(outputName):
+#     sizedAnalytic = OAF.optimized_analityc(dataResized, size)
+#     torch.save(sizedAnalytic, outputName + iogan.EXTENSION)
+# else:
+#     sizedAnalytic = torch.load(outputName + iogan.EXTENSION)
+#
+# OAF.runAnalytics('/resources/resized/' + outputName, dataResized, ecalStats=sizedAnalytic)
 
 #start = timer()
 #OAF.runAnalytics(dataset, ecalData=data)  # , fakeData=ED.parseEcalData('caloGAN_v3_case5_2K'))

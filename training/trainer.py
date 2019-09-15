@@ -21,11 +21,11 @@ class Trainer(object):
         self.device = device
         self.path = path
         self.debugg = debugg
-        self.prepare = lambda data: preprocessData(data).view(problemSize.batch_size, problemSize.nc, problemSize.imgSize, problemSize.imgSize)
+        self.prepare = lambda data: preprocessData(data)
 
     def noise(self, noiseCount=None):
         count = noiseCount if noiseCount is not None else self.problemSize.batch_size
-        return torch.randn(count, self.problemSize.nz, 1, 1, device=self.device)
+        return torch.randn(count, self.problemSize.nz, device=self.device)
 
     def tryLoadPrecomputed(self, Dis, Gen, Dopt, Gopt):
         if not iogan.isFilePresent(self.path): return 0, None
@@ -39,14 +39,19 @@ class Trainer(object):
         Gen_optimizer = self.initOptimizer(Gen.parameters(), hyperParams)
         computedEpochs, savedNoise = self.tryLoadPrecomputed(Dis, Gen, Dis_optimizer, Gen_optimizer)
 
-        fixed_noise = savedNoise if savedNoise is not None else self.noise(fixedNoiseCount)
+        fixed_noise = savedNoise if savedNoise is not None else [self.noise(fixedNoiseCount)]
         datasetLength = len(dataLoader)
 
         iters = 0
         for epoch in range(computedEpochs, num_epochs + computedEpochs + 1):
             for i, data in enumerate(dataLoader, 0):
-                fake = [Gen(self.noise()) for i in range(0, self.ganLoss.needFakes)]
-                real = self.prepare(data).to(self.device)
+                data[0].to(self.device)
+                data[1].to(self.device)
+                real = data
+                if not savedNoise :
+                    fixed_noise.append(real[1][:fixedNoiseCount])
+
+                fake = [Gen([self.noise(), real[1]]) for i in range(0, self.ganLoss.needFakes)] #real[1] stands for condition
                 D_G_z1, D_x, errD = self.trainDiscriminator(Dis, Dis_optimizer, real, fake)
                 self.D_losses.append(errD.item())
 
@@ -71,7 +76,7 @@ class Trainer(object):
 
         return Dis_optimizer, Gen_optimizer
 
-    def trainDiscriminator(self, Dis, Dis_optimizer, data, fake):
+    def trainDiscriminator(self, Dis, Dis_optimizer, data, fake): #data is [image, condition], fake is output image for conditions
         ############################
         # (1) Update D network: maximize log(D(x)) + log(1 - D(G(z)))
         Dis.zero_grad()
