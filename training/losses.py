@@ -26,23 +26,24 @@ class GanLoss(object):
 
 
 class WganLoss(object):
-    def __init__(self, problemSize, gradientPenalizer) -> None:
+    def __init__(self, problemSize, dataRetriever, gradientPenalizer) -> None:
         self.gradientPenalizer = gradientPenalizer
         self.needFakes = 1
+        self.dr = dataRetriever
 
     def forwardBackwardG(self, D, real, fake):
-        D_G_z2 = D([fake[0], real[1]])
+        D_G_z2 = D([fake[0], self.dr.getDisCondition(real)])
         errG = - D_G_z2.mean()
         errG.backward()
         return D_G_z2, errG
 
     def forwardBackwardD(self, D, real, fake):
-        D_x = D(real)
+        D_x = D([self.dr.getImage(real), self.dr.getDisCondition(real)])
         fake = fake[0].detach()
-        D_G_z1 = D([fake, real[1]])
+        D_G_z1 = D([fake, self.dr.getDisCondition(real)])
 
         # Get gradient penalty
-        gradient_penalty = self.gradientPenalizer.calculate(D, real, fake)
+        gradient_penalty = self.gradientPenalizer.calculate(D, [self.dr.getImage(real), self.dr.getDisCondition(real)], fake)
         # Create total loss and optimize
         errD = D_G_z1.mean() - D_x.mean() + gradient_penalty
         errD.backward()
@@ -50,12 +51,13 @@ class WganLoss(object):
 
 
 class CramerGanLoss(object):
-    def __init__(self, problemSize, gradientPenalizer) -> None:
+    def __init__(self, problemSize, dataRetriever, gradientPenalizer) -> None:
         self.gradientPenalizer = gradientPenalizer
         self.needFakes = 2
+        self.dr = dataRetriever
 
     def forwardBackwardG(self, D, real, fake):
-        D_x = D(real)
+        D_x = D([self.dr.getImage(real), self.dr.getDisCondition(real)])
         D_G_z1 = D(fake[1])
         D_G_z2 = D(fake[0])
 
@@ -68,7 +70,7 @@ class CramerGanLoss(object):
         return torch.norm(x - y, p=2, dim=-1)
 
     def forwardBackwardD(self, D, real, fake):
-        D_x = D(real)
+        D_x = D([self.dr.getImage(real), self.dr.getDisCondition(real)])
         fake1 = fake[0].detach()
         D_G_z1 = D(fake1)
         D_G_z2 = D(fake[1].detach())
@@ -86,14 +88,15 @@ class CramerGanLoss(object):
 
 
 class CramerEneryGanLoss(object):
-    def __init__(self, problemSize, gradientPenalizer) -> None:
+    def __init__(self, problemSize, dataRetriever, gradientPenalizer) -> None:
         self.gradientPenalizer = gradientPenalizer
         self.needFakes = 1
+        self.dr = dataRetriever
 
     def forwardBackwardG(self, D, real, fake):
-        D_x = torch.chunk(D(real), 2)
+        D_x = torch.chunk(D([self.dr.getImage(real), self.dr.getDisCondition(real)]), 2)
         D_x1, D_x2 = D_x[0], D_x[1]
-        D_G_z = torch.chunk(D([fake[0], real[1]]), 2)
+        D_G_z = torch.chunk(D([fake[0], self.dr.getDisCondition(real)]), 2)
         D_G_z1 = D_G_z[1]
         D_G_z2 = D_G_z[0]
 
@@ -106,8 +109,8 @@ class CramerEneryGanLoss(object):
         return torch.norm(x - y, p=2, dim=-1)
 
     def forwardBackwardD(self, D, real, fake):
-        reals = torch.chunk(real[0], 2)
-        realConditions = torch.chunk(real[1], 2)
+        reals = torch.chunk(self.dr.getImage(real), 2)
+        realConditions = torch.chunk(self.dr.getDisCondition(real), 2)
 
         reals0 = [reals[0], realConditions[0]]
         D_x1 = D(reals0)
@@ -140,10 +143,11 @@ class GradientPenalizer :
         # Calculate interpolation
         # todo : fix for old curves dataset (uncomment while not fixed
         #real = torch.reshape(real, (real.size(0), real.size(1)))
-        alpha = torch.rand(real[0].size())
+        img = real[0]
+        alpha = torch.rand(img.size())
         if self.useCuda:
             alpha = alpha.cuda()
-        interpolated = alpha * real[0].requires_grad_(True) + (1 - alpha) * fake.requires_grad_(True)
+        interpolated = alpha * img.requires_grad_(True) + (1 - alpha) * fake.requires_grad_(True)
         if self.useCuda:
             interpolated = interpolated.cuda()
 
@@ -157,7 +161,7 @@ class GradientPenalizer :
                                         create_graph=True, retain_graph=True)[0]
 
         # Gradients have shape (batch_size, num_channels, img_width, img_height), so flatten to easily take norm per example in batch
-        gradients = gradients.view(real[0].size(0), -1)
+        gradients = gradients.view(img.size(0), -1)
 
         gradNorm = gradients.norm(2, dim=1)
         if self.trackProgress:
@@ -168,3 +172,17 @@ class GradientPenalizer :
         if self.trackProgress:
             self.penalties.append(penalty.item())
         return penalty
+
+
+class DataRetriever :
+    def __init__(self, isDcgan=False) -> None:
+        self.isDcgan = isDcgan
+
+    def getImage(self, listOfTensor):
+        return listOfTensor[0]
+
+    def getGenCondition(self, listOfTensor):
+        return listOfTensor[1]
+
+    def getDisCondition(self, listOfTensor):
+        return listOfTensor[2] if self.isDcgan else listOfTensor[1]

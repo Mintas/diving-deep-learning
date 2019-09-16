@@ -12,7 +12,7 @@ import training.losses
 import training.optimDecorators
 from plots import painters, plotUi
 import mygan
-import architectures.cLinearGan2 as myzoo
+import architectures.cdcganBN as myzoo
 from training import trainer
 import numpy as np
 from serialization import iogan
@@ -47,12 +47,14 @@ lr = 0.0003  # Learning rate for optimizers | 0.04 is good for SGD and 0.0001 fo
 beta1 = 0.5  # Beta1 hyperparam for Adam optimizers
 ngpu = 0  # increase for GPU hosted calculations
 gpWeight = 0.5 # gradient penalty weight; somehow 0.1 is nice, 1 is so so, 10 is bad, 0.01 is vanishing
-type = mygan.GANS.WGAN # we are going to try gan, wgan-gp and cramerGan
+type = mygan.GANS.CRAMER # we are going to try gan, wgan-gp and cramerGan
 initOptimizer = training.optimDecorators.optRMSProp  # works almost as well for SGD and lr = 0.03
 
 # dataSet = myfuncs.ProbDistrDataset(torch.distributions.normal.Normal(0,1), 128000)
 datasetName = 'caloGAN_v4_case0_50K'
-archVersion = 'cLinearGan2_WGAN' #arch version
+archVersion = 'cdcgan1' #arch version
+isDcgan = True
+
 
 resultingName = 'resources/Ccomputed/%s_%s' % (datasetName, archVersion)
 ganFile = resultingName
@@ -91,21 +93,28 @@ print(netG)
 print(netD)
 
 
-def prepareDataLoader():
+def prepareDataLoader(dcgan=False):
     ecalData = np.load('resources/ecaldata/%s.npz' % datasetName)
     toFloatTensor = lambda key: torch.from_numpy(ecalData[key]).float()
     energyDepo = toFloatTensor('EnergyDeposit')
     condition = torch.cat([toFloatTensor('ParticlePoint')[..., :2], toFloatTensor('ParticleMomentum')], 1)
-    dataSet = torch.utils.data.TensorDataset(energyDepo.view(energyDepo.size(0), nc, imgSize, imgSize), condition)
+    if (dcgan) :
+        conditionAsChannels = condition.unsqueeze(-1).expand(condition.size(0), conditionSize, imgSize).unsqueeze(-1).expand(condition.size(0), conditionSize, imgSize, imgSize)
+        dataSet = torch.utils.data.TensorDataset(energyDepo.view(energyDepo.size(0), nc, imgSize, imgSize), condition, conditionAsChannels)
+    else :
+        dataSet = torch.utils.data.TensorDataset(energyDepo.view(energyDepo.size(0), nc, imgSize, imgSize), condition)
     dataLoader = torch.utils.data.DataLoader(dataSet, batch_size=batch_size, shuffle=True, num_workers=1)
     return dataLoader
 
-def trainGan():
-    dataLoader = prepareDataLoader()
+def lossFactory(dcgan=False):
+    dataRetriever = training.losses.DataRetriever(dcgan)
+    return training.losses.GanLoss(device, problem, nn.BCELoss()) if type == mygan.GANS.GAN \
+        else (training.losses.WganLoss if type == mygan.GANS.WGAN else training.losses.CramerEneryGanLoss)(problem, dataRetriever,
+                                                                                                           training.losses.GradientPenalizer(gpWeight, True,ngpu > 0))
 
-    lossCalculator = training.losses.GanLoss(device, problem, nn.BCELoss()) if type == mygan.GANS.GAN \
-        else (training.losses.WganLoss if type == mygan.GANS.WGAN else training.losses.CramerEneryGanLoss)(problem,
-                                                                                                           training.losses.GradientPenalizer(gpWeight,True,ngpu > 0))
+def trainGan():
+    dataLoader = prepareDataLoader(isDcgan)
+    lossCalculator = lossFactory(isDcgan)
     ganTrainer = trainer.Trainer(device, problem, lossCalculator, initOptimizer, lambda d: d, ganFile)
 
     ui = plotUi.ShowPlotUi()
@@ -121,6 +130,9 @@ def trainGan():
                                                      ganTrainer.ganLoss.gradientPenalizer.norms))
 
     ui.close()
+
+
+
 
 
 def evalGan():
