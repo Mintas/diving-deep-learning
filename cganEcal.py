@@ -12,7 +12,7 @@ import training.losses
 import training.optimDecorators
 from plots import painters, plotUi
 import mygan
-import architectures.cdcganBN as myzoo
+import architectures.cLinearDeep as myzoo
 from training import trainer
 import numpy as np
 from serialization import iogan
@@ -52,8 +52,8 @@ initOptimizer = training.optimDecorators.optRMSProp  # works almost as well for 
 
 # dataSet = myfuncs.ProbDistrDataset(torch.distributions.normal.Normal(0,1), 128000)
 datasetName = 'caloGAN_v4_case0_50K'
-archVersion = 'cdcgan1' #arch version
-isDcgan = True
+archVersion = 'cLinearDeep' #arch version
+isDcgan = False
 
 
 resultingName = 'resources/Ccomputed/%s_%s' % (datasetName, archVersion)
