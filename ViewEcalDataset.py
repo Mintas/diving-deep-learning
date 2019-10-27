@@ -9,6 +9,7 @@ import torch
 
 import domain.ecaldata as ED
 from serialization import iogan
+from collections import OrderedDict
 
 # EnergyDeposit = ecal['EnergyDeposit']
 # ParticlePoint = ecal['ParticlePoint']
@@ -19,6 +20,11 @@ dataset = 'caloGAN_v3_case4_2K' #'caloGAN_v3_case2_50K'#'caloGAN_v3_case4_2K'
 data = ED.parseEcalData(dataset)
 
 size = 8
+
+res = OrderedDict()
+for i in range(0, data.count()):
+    kv = data.getKeyValued(i)
+    res.setdefault(kv[0], []).append(kv[1])
 
 # resize = tvtf.Compose([
 #     tvtf.ToPILImage(),

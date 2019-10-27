@@ -11,6 +11,7 @@ import domain.ecaldata as ED
 import plots.plotUi as PUI
 import matplotlib.pyplot as plt
 import matplotlib
+#import serialization.iogan as io
 
 #Below we define set of statistic accumulators, required methods are append(customargs) and get(flag)
 
@@ -196,7 +197,7 @@ def runPlotMeans(ecalData, fakeData, haveFake, plotUi):
 
 
 def runAnalytics(filename, ecalData, fakeData=None, ecalStats=None, fakeStats=None):
-    print(ecalData.title)
+    #print(ecalData.title)
     matplotlib.rcParams.update({'font.size': 13})
 
 
@@ -204,16 +205,17 @@ def runAnalytics(filename, ecalData, fakeData=None, ecalStats=None, fakeStats=No
     outputfile = dirname(dirname(__file__)) + filename + '_stats' + ('_generated' if haveFake else '')
     plotUi = PUI.PDFPlotUi(outputfile)  # PUI.ShowPlotUi()
 
-    imgSize = ecalData.response[0].shape[0]
-    runPlotMeans(ecalData, fakeData, haveFake, plotUi)
+    imgSize = 30
+    #imgSize = ecalData.response[0].shape[0]
+    #runPlotMeans(ecalData, fakeData, haveFake, plotUi)
 
     if ecalStats is None:
         ecalStats = optimized_analityc(ecalData, imgSize)
     if haveFake and fakeStats is None:
         fakeStats = optimized_analityc(fakeData, imgSize)
 
-    plotUi.toView(lambda: plotResponses(ecalData, True, fakeData))
-    plotUi.toView(lambda: plotResponses(ecalData, False, fakeData))
+    #plotUi.toView(lambda: plotResponses(ecalData, True, fakeData))
+    #plotUi.toView(lambda: plotResponses(ecalData, False, fakeData))
 
     layout = Layouts.GENERATED if haveFake else Layouts.DISCOVER
 
@@ -261,11 +263,26 @@ def runAnalytics(filename, ecalData, fakeData=None, ecalStats=None, fakeStats=No
     return ecalStats, fakeStats
 
 
+import architectures.dcganBatchNorm as dcgan
+import domain.parameters
+import mygan
+
 def run():
+    import torch
     #runAnalytics('caloGAN_v3_case5_2K')
     dataset = 'caloGAN_v3_case4_2K'
     predefinedRanges={AccumEnum.ASSYMETRY : {True: [-0.8, -0.5], False: [-1.0, 0.6]},
             AccumEnum.WIDTH : {True: [2.5, 7.0], False: [2.0, 7.5]},
                       AccumEnum.ENERGY : {True: False, False: False}} #both False here, because we have logScaled as first boolean argument and rangeByExpectedOnly as second boolean
-    es, fs = runAnalytics('/' + dataset, ecalData = ED.parseEcalData(dataset), fakeData=ED.parseEcalData('caloGAN_v3_case5_2K'))
+
+    problem = domain.parameters.ProblemSize(100, 100, 1, 1000, 30)
+    hyperParams = domain.parameters.HyperParameters(0, 0.0003, 0.5)
+
+    G = dcgan.GenEcal(mygan.GANS.ECRAMER, hyperParams, problem)
+    D = dcgan.DiscEcal(mygan.GANS.ECRAMER, hyperParams, problem)
+    #io.loadGANs(D, G, '/Users/mintas/PycharmProjects/untitled1/resources/computed/test/caloGAN_v4_case2_50K_stats.pth')
+
+    es = torch.load('/Users/mintas/PycharmProjects/untitled1/resources/computed/test/caloGAN_v4_case2_50K_stats.pth')
+             #torch.load('/Users/mintas/PycharmProjects/untitled1/resources/computed/test/caloGAN_v4_case2_50K_dcganZMatch_nf64_stats.pth')
+    runAnalytics('/' + 'caloGAN_v4_case2_50K_dcganZMatch', [], [], es, fs)
 #run()

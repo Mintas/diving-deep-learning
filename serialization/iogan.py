@@ -1,5 +1,6 @@
 import torch
 import os
+import analytics.optimized_analytic_funcs as OAF
 
 
 EXTENSION = '.pth'
@@ -51,3 +52,13 @@ def loadGANs(D, G, PATH):
 
     D.load_state_dict(checkpoint[IOGANConst.D])
     G.load_state_dict(checkpoint[IOGANConst.G])
+
+def saveStats(stats, PATH):
+    print('!!!!!! SAVING STATS !!!!!!', PATH)
+    torch.save(stats, PATH + EXTENSION)
+    print('!!!!!! Models have been saved successfully !!!!!')
+
+def loadStats(PATH):
+    print('!!!!!! LOADING STATS !!!!!!', PATH)
+    stats = torch.load(PATH + EXTENSION)
+    return OAF.EcalStats(stats)

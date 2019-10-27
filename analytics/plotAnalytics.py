@@ -128,7 +128,8 @@ def doPlotClusterShape(energies, centralEnergies, color, allPoints, range):
     if allPoints:
         nrgBins = energies
     else:
-        nrgSpace = np.linspace(range[0] - 1, range[1] + 1, 201)
+        #nrgSpace = np.linspace(range[0] - 1, range[1] + 1, 201)
+        nrgSpace = np.linspace(325, 525, 20)
         binnedNrg = pd.cut(energies, bins=nrgSpace)
         nrgBins = binnedNrg.categories.mid[binnedNrg.codes].values
     sns.lineplot(x=nrgBins, y=np.true_divide(centralEnergies, energies), color=color, ci=99)

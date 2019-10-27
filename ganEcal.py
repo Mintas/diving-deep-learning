@@ -12,7 +12,7 @@ import training.losses
 import training.optimDecorators
 from plots import painters, plotUi
 import mygan
-import architectures.dcganBN_FC as myzoo
+import architectures.dcganBatchNorm as myzoo
 from training import trainer
 import numpy as np
 from serialization import iogan
@@ -39,7 +39,7 @@ batch_size = 500  # Batch size during training
 nc = 1  # we got 1channel response
 nz = 100 # latent space size | 42 is close to hypotenuse of response 30x30
 imgSize = 30  # our respons is 30x30
-ngf = 30  # todo : decide Generator feature-space characteristic size
+ngf = 100  # todo : decide Generator feature-space characteristic size
 ndf = 30  # decide Critic feature-space characteristic size
 num_epochs = 5  # 5 for example, need much more for learning
 lr = 0.0003  # Learning rate for optimizers | 0.04 is good for SGD and 0.0001 for RMSProp
@@ -50,8 +50,8 @@ type = mygan.GANS.CRAMER # we are going to try gan, wgan-gp and cramerGan
 initOptimizer = training.optimDecorators.optRMSProp  # works almost as well for SGD and lr = 0.03
 
 # dataSet = myfuncs.ProbDistrDataset(torch.distributions.normal.Normal(0,1), 128000)
-datasetName = 'caloGAN_v3_case2_50K'
-archVersion = 'dcganBNFC' #arch version
+datasetName = 'caloGAN_v4_case2_50K'
+archVersion = 'dcganZMatch' #arch version
 
 resultingName = 'resources/computed/%s_%s' % (datasetName, archVersion)
 ganFile = resultingName
@@ -118,7 +118,11 @@ def trainGan():
 
 def evalGan():
     with torch.no_grad():
-        iogan.loadGANs(netD, netG, ganFile)
+        #iogan.loadGANs(netD, netG, ganFile)
+        checkpoint = torch.load('/Users/mintas/PycharmProjects/untitled1/resources/computed/test/caloGAN_v4_case2_50K_dcganBatchNorm_nf100 (2).pth', map_location='cpu')
+
+        netD.load_state_dict(checkpoint[iogan.IOGANConst.D])
+        netG.load_state_dict(checkpoint[iogan.IOGANConst.G])
         netG.eval(), netD.eval()
 
         ecalData = domain.ecaldata.parseEcalData(datasetName)
@@ -131,7 +135,10 @@ def evalGan():
         responses = generated.reshape(shape).cpu().detach().numpy()
         fakeData = domain.ecaldata.EcalData(responses, ecalData.momentum, ecalData.point)
 
-        OAF.runAnalytics(statFile, ecalData, fakeData)
+        #OAF.runAnalytics(statFile, ecalData, fakeData)
+        es, fs = OAF.runAnalytics('/' + 'caloGAN_v4_case2_50K_dcganBatchNprm', ecalData, fakeData,
+                         ecalStats=torch.load('/Users/mintas/PycharmProjects/untitled1/resources/computed/test/caloGAN_v4_case2_50K_stats.pth'))
 
 
-trainGan()
+#trainGan()
+evalGan()
