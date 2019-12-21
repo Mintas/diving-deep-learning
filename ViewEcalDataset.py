@@ -16,15 +16,20 @@ from collections import OrderedDict
 # ParticleMomentum = ecal['ParticleMomentum']
 # ParticlePDG=ecal['ParticlePDG']  #here we got only vector with constant 22
 
-dataset = 'caloGAN_v3_case4_2K' #'caloGAN_v3_case2_50K'#'caloGAN_v3_case4_2K'
+#case4 =  [ 1.75761939, -2.4006713 , 16.63603172] , 16.9
+#case3 = [-1.59858634  0.80942614 29.04478182], 29.1
+#case2 = [0.15657315 0.14722511 2.4455745 ], 2.455
+
+dataset = 'caloGAN_v4_case2_50K' #'caloGAN_v3_case2_50K'#'caloGAN_v3_case4_2K'
 data = ED.parseEcalData(dataset)
 
-size = 8
 
-res = OrderedDict()
-for i in range(0, data.count()):
-    kv = data.getKeyValued(i)
-    res.setdefault(kv[0], []).append(kv[1])
+# size = 8
+#
+# res = OrderedDict()
+# for i in range(0, data.count()):
+#     kv = data.getKeyValued(i)
+#     res.setdefault(kv[0], []).append(kv[1])
 
 # resize = tvtf.Compose([
 #     tvtf.ToPILImage(),
@@ -34,20 +39,20 @@ for i in range(0, data.count()):
 # responseResized = np.array([resize(np.float32(img))[0].numpy() for img in data.response])
 # dataResized = ED.EcalData(responseResized, data.momentum, data.point, data.title)
 
-dataResized = ED.resizeResponses(data, size)
+#dataResized = ED.resizeResponses(data, size)
 
 # fig = plt.figure(figsize=(10, 10))
 # AF.plotResponses(dataResized)
 # fig.show()
+#
+# outputName = dataset + '_resizedto_' + str(size)
+# if not iogan.isFilePresent(outputName):
+#     sizedAnalytic = OAF.optimized_analityc(dataResized, size)
+#     torch.save(sizedAnalytic, outputName + iogan.EXTENSION)
+# else:
+#     sizedAnalytic = torch.load(outputName + iogan.EXTENSION)
 
-outputName = dataset + '_resizedto_' + str(size)
-if not iogan.isFilePresent(outputName):
-    sizedAnalytic = OAF.optimized_analityc(dataResized, size)
-    torch.save(sizedAnalytic, outputName + iogan.EXTENSION)
-else:
-    sizedAnalytic = torch.load(outputName + iogan.EXTENSION)
-
-OAF.runAnalytics('/resources/resized/' + outputName, dataResized, ecalStats=sizedAnalytic)
+#OAF.runAnalytics('/resources/resized/' + outputName, dataResized, ecalStats=sizedAnalytic)
 
 #start = timer()
 #OAF.runAnalytics(dataset, ecalData=data)  # , fakeData=ED.parseEcalData('caloGAN_v3_case5_2K'))

@@ -6,13 +6,17 @@ import matplotlib.backends.backend_pdf as pltpdf
 
 
 class ShowPlotUi():
+    def __init__(self, figsize=(10,10)) -> None:
+        super().__init__()
+        self.figsize = figsize
+
     def toView(self, plot):
         fig = self.figure()
         plot()
         self.show(fig)
 
     def figure(self):
-        return plt.figure(figsize=(10, 10))
+        return plt.figure(figsize=self.figsize)
 
     def show(self, fig):
         plt.show()

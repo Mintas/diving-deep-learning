@@ -197,7 +197,7 @@ def runPlotMeans(ecalData, fakeData, haveFake, plotUi):
 
 
 def runAnalytics(filename, ecalData, fakeData=None, ecalStats=None, fakeStats=None):
-    #print(ecalData.title)
+    print(ecalData.title)
     matplotlib.rcParams.update({'font.size': 13})
 
 
@@ -205,17 +205,17 @@ def runAnalytics(filename, ecalData, fakeData=None, ecalStats=None, fakeStats=No
     outputfile = dirname(dirname(__file__)) + filename + '_stats' + ('_generated' if haveFake else '')
     plotUi = PUI.PDFPlotUi(outputfile)  # PUI.ShowPlotUi()
 
-    imgSize = 30
-    #imgSize = ecalData.response[0].shape[0]
-    #runPlotMeans(ecalData, fakeData, haveFake, plotUi)
+    #imgSize = 30
+    imgSize = ecalData.response[0].shape[0]
+    runPlotMeans(ecalData, fakeData, haveFake, plotUi)
 
     if ecalStats is None:
         ecalStats = optimized_analityc(ecalData, imgSize)
     if haveFake and fakeStats is None:
         fakeStats = optimized_analityc(fakeData, imgSize)
 
-    #plotUi.toView(lambda: plotResponses(ecalData, True, fakeData))
-    #plotUi.toView(lambda: plotResponses(ecalData, False, fakeData))
+    plotUi.toView(lambda: plotResponses(ecalData, True, fakeData))
+    plotUi.toView(lambda: plotResponses(ecalData, False, fakeData))
 
     layout = Layouts.GENERATED if haveFake else Layouts.DISCOVER
 
@@ -263,7 +263,7 @@ def runAnalytics(filename, ecalData, fakeData=None, ecalStats=None, fakeStats=No
     return ecalStats, fakeStats
 
 
-import architectures.dcganBatchNorm as dcgan
+
 import domain.parameters
 import mygan
 
@@ -271,18 +271,133 @@ def run():
     import torch
     #runAnalytics('caloGAN_v3_case5_2K')
     dataset = 'caloGAN_v3_case4_2K'
-    predefinedRanges={AccumEnum.ASSYMETRY : {True: [-0.8, -0.5], False: [-1.0, 0.6]},
-            AccumEnum.WIDTH : {True: [2.5, 7.0], False: [2.0, 7.5]},
-                      AccumEnum.ENERGY : {True: False, False: False}} #both False here, because we have logScaled as first boolean argument and rangeByExpectedOnly as second boolean
+    #es, fs = runAnalytics('/' + dataset, ecalData = ED.parseEcalData(dataset), fakeData=ED.parseEcalData('caloGAN_v3_case5_2K'))
 
     problem = domain.parameters.ProblemSize(100, 100, 1, 1000, 30)
     hyperParams = domain.parameters.HyperParameters(0, 0.0003, 0.5)
 
-    G = dcgan.GenEcal(mygan.GANS.ECRAMER, hyperParams, problem)
-    D = dcgan.DiscEcal(mygan.GANS.ECRAMER, hyperParams, problem)
+    #import architectures.dcganBatchNorm as dcgan
+    #G = dcgan.GenEcal(mygan.GANS.ECRAMER, hyperParams, problem)
+    #D = dcgan.DiscEcal(mygan.GANS.ECRAMER, hyperParams, problem)
     #io.loadGANs(D, G, '/Users/mintas/PycharmProjects/untitled1/resources/computed/test/caloGAN_v4_case2_50K_stats.pth')
 
-    es = torch.load('/Users/mintas/PycharmProjects/untitled1/resources/computed/test/caloGAN_v4_case2_50K_stats.pth')
-             #torch.load('/Users/mintas/PycharmProjects/untitled1/resources/computed/test/caloGAN_v4_case2_50K_dcganZMatch_nf64_stats.pth')
+    es,fs = torch.load('/Users/mintas/PycharmProjects/untitled1/resources/computed/test/caloGAN_v4_case2_50K_stats.pth'),\
+            torch.load('/Users/mintas/PycharmProjects/untitled1/resources/computed/test/caloGAN_v4_case2_50K_dcganZMatch_nf64_stats.pth')
     runAnalytics('/' + 'caloGAN_v4_case2_50K_dcganZMatch', [], [], es, fs)
 #run()
+#############################################
+#############################################
+#############################################
+#############################################
+
+def conf():
+    import architectures.linearGan21062019 as lineargan
+    from analytics.plotAnalytics import doPlotAssymetryArr, doPlotShowerWidthArr, plotEnergiesArr
+    import torch
+    import os
+
+    basepath = '/Users/mintas/PycharmProjects/untitled1/resources/computed/test/'
+
+    problem = domain.parameters.ProblemSize(100, 120, 1, 1000, 30)
+    hyperParams = domain.parameters.HyperParameters(0, 0.0003, 0.5)
+
+    #load networks
+    def getStats(datasetName):
+        statsname = basepath + 'gen_stats_%s.pth' % datasetName
+        generatedName = basepath + 'gen_resp_%s.pth' % datasetName
+        estats = torch.load(basepath + '%s_stats.pth' % datasetName, map_location='cpu')
+        ecalData = np.load('/Users/mintas/PycharmProjects/untitled1/resources/ecaldata/%s.npz' % datasetName)
+        ecalDataPojo = domain.ecaldata.dictToEcalData(ecalData)
+        shape = ecalDataPojo.response.shape
+
+        if not os.path.isfile(statsname):
+            G = lineargan.GenEcal(mygan.GANS.ECRAMER, hyperParams, problem)
+            checkpoint = torch.load('/Users/mintas/PycharmProjects/untitled1/resources/computed/test/swapdataset_%s_linear.pth' % datasetName, map_location='cpu')
+            G.load_state_dict(checkpoint['G_state'])
+
+
+            with torch.no_grad():
+                G.eval()
+                tonnsOfNoise = torch.randn(shape[0], 100, 1, 1)
+                generated = G(tonnsOfNoise)
+                torch.save(generated, generatedName)
+                print('saved generated responses')
+                # generated = generated*generated #comment this to remove sqr after sqrt learning
+                # generated = torch.expm1(generated) #comment this to remove sqr after sqrt learning
+                fakeData = domain.ecaldata.EcalData(generated.reshape(shape).cpu().numpy(), ecalDataPojo.momentum, ecalDataPojo.point)
+            fakeStats = optimized_analityc(fakeData, 30)
+            torch.save(fakeStats, statsname)
+            return estats, ecalData, fakeStats, fakeData
+        else:
+            print('GOTCHA!!!')
+            return estats, ecalDataPojo, torch.load(statsname, map_location='cpu'), \
+                   domain.ecaldata.EcalData(torch.load(generatedName, map_location='cpu').reshape(shape).cpu().numpy(), ecalDataPojo.momentum, ecalDataPojo.point)
+
+    ds4 = 'caloGAN_v4_case4_10K'
+    estats4, edata4, gstats4, generated4 =  getStats(ds4)
+    estats3, edata3, gstats3, generated3 =  getStats('caloGAN_v4_case3_10K')
+    estats2, edata2, gstats2, generated2 =  getStats('caloGAN_v4_case2_50K')
+
+
+    plotUi = PUI.ShowPlotUi(figsize=(8.9, 8.9)) #PUI.PDFPlotUi(outputfile)
+
+    layout = 0
+
+    def runSubplot(func, statType, pos, orth, range=True):
+        pos = pos + 1
+        plt.subplot(4,4, pos)
+        func([
+            estats4.get(statType, orth), gstats4.get(statType, orth),
+            estats3.get(statType, orth), gstats3.get(statType, orth),
+            estats2.get(statType, orth), gstats2.get(statType, orth)
+        ], orth, range)
+        return pos
+
+    def runPlotLayoutSublots(position):
+        position = runSubplot(doPlotAssymetryArr, AccumEnum.ASSYMETRY, position, False)
+        position = runSubplot(doPlotAssymetryArr, AccumEnum.ASSYMETRY, position, True)
+        position = runSubplot(doPlotShowerWidthArr, AccumEnum.WIDTH, position, False)
+        position = runSubplot(doPlotShowerWidthArr, AccumEnum.WIDTH, position, True)
+        position = runSubplot(plotEnergiesArr, AccumEnum.ENERGY, position, False)
+        position = runSubplot(plotEnergiesArr, AccumEnum.ENERGY, position, True)
+    #plotUi.toView(lambda: runPlotLayoutSublots(layout))
+
+    def runPlotCLUSTERSHAPE(position):
+        for crop in estats2.get(AccumEnum.CLUSTER_SHAPE, True):
+            plotShape = lambda cs,o,r: plotEnergiesArr(list(map(lambda shapes: shapes.get(crop),cs)),o,r, crop)
+            position = runSubplot(plotShape, AccumEnum.CLUSTER_SHAPE, position, False)
+            position = runSubplot(plotShape, AccumEnum.CLUSTER_SHAPE, position, True)
+
+    #plotUi.toView(lambda: runPlotCLUSTERSHAPE(layout))
+
+
+    #runPlotMeans(ecalData, fakeData, haveFake, plotUi)
+
+    def plotResponses(ecalData, fakeData, initLayout):
+        combined = [ecalData, fakeData]
+        vmin, vmax = np.amin(np.ma.masked_invalid(combined)), np.amax(combined)
+        plt.subplot(3,4,initLayout)
+        plotResponseImg(ecalData, vmin, vmax)
+        initLayout+=1
+        plt.subplot(3,4,initLayout)
+        plotResponseImg(fakeData, vmin, vmax)
+        initLayout+=1
+
+        combined = np.log10(combined)
+        vmin, vmax = np.amin(np.ma.masked_invalid(combined)), np.amax(combined)
+        plt.subplot(3, 4, initLayout)
+        plotResponseImg(combined[0], vmin, vmax)
+        initLayout+=1
+        plt.subplot(3,4, initLayout)
+        plotResponseImg(combined[1], vmin, vmax)
+        initLayout+=1
+
+    def plotResps():
+        plotResponses(edata4.response[7], generated4.response[10], 1)
+        plotResponses(edata3.response[1], generated3.response[0], 5)
+        plotResponses(edata2.response[6], generated2.response[16], 9)
+
+    #plotUi = PUI.ShowPlotUi(figsize=(8.9, 6))
+    #plotUi.toView(plotResps)
+
+#conf()
