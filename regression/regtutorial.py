@@ -13,7 +13,7 @@ import domain.ecaldata as ed
 
 torch.manual_seed(1)  # reproducible
 
-BATCH_SIZE = 1000
+BATCH_SIZE = 100
 EPOCH = 100
 i,j=15,15
 
@@ -34,16 +34,18 @@ torch_dataset = Data.TensorDataset(conditions, responses)
 # another way to define a network
 net = torch.nn.Sequential(
     torch.nn.Linear(conditions.size(1), 100),
-    torch.nn.LeakyReLU(0.2),
-    torch.nn.Linear(100, 70),
-    torch.nn.LeakyReLU(0.2),
-    torch.nn.Linear(70, 30),
+    # torch.nn.LeakyReLU(0.2),
+    # torch.nn.Linear(100, 70),
+    # torch.nn.LeakyReLU(0.2),
+    # torch.nn.Linear(70, 30),
+    torch.nn.Tanh(),
+    torch.nn.Linear(100, 30),
     torch.nn.Tanh(),
     torch.nn.Linear(30, 1),
 )
 
 optimizer = torch.optim.Adam(net.parameters(), lr=0.01)
-loss_func = torch.nn.MSELoss()  # this is for regression mean squared loss
+loss_func = torch.nn.MSELoss(reduction='sum')  # this is for regression mean squared loss
 
 
 
@@ -87,12 +89,12 @@ for epoch in range(EPOCH):
     if epoch % 1 == 0:
         print("Epoch : {}".format(epoch))
     for step, (b_x, b_y) in enumerate(loader):  # for each training step
-        prediction = net(b_x)  # input x and predict based on x
-
-        loss = loss_func(prediction, b_y)  # must be (1. nn output, 2. target)
-
         optimizer.zero_grad()  # clear gradients for next train
+
+        prediction = net(b_x)  # input x and predict based on x
+        loss = loss_func(prediction, b_y)  # must be (1. nn output, 2. target)
         loss.backward()  # backpropagation, compute gradients
+
         optimizer.step()  # apply gradients
 
         if epoch % 10==0 and step == 1:

@@ -82,6 +82,56 @@ def runSomeReview():
     scatterHtml(conditions[:, 5], "E0", torch.tensor(energies), "E0_KNN_{}_{}.html".format(i, j))
 
 
+import matplotlib.pyplot as plt
+
+
+
+def tryKNNRegression():
+    datasetName = 'caloGAN_v4_case0_50K'
+    ecalData = ed.parseEcalData(datasetName)  # '/Users/mintas/PycharmProjects/untitled1/resources/ecaldata/%s.npz' %
+    energyDeposites = matrixOfEnergyDepositeSamples(ecalData)
+
+    conditions = buildConditionsBySample(ecalData, True)
+    conditions = standardizeConditions(conditions)  # Zero-mean, Unit-variance
+
+    i,j = 15,15
+    responses = energyDeposites[i,j]
+    #responses = knnEnergies(conditions, responses, 1000)
+
+    print('prepared, gonna fit!')
+
+    from sklearn.neighbors import KNeighborsRegressor
+    n_neighbors = 0
+    distance = 'distance'
+    knn = KNeighborsRegressor(n_neighbors, weights=distance)
+
+    knn.fit(conditions[:10000], responses[:10000])
+    print('fitted, gonna predict!')
+
+
+    predicted = knn.predict(conditions)
+
+    def plotAndShowLearningProcess(fig, ax, conditions, responses, regressed, finish, conditionId=1):
+        # plot and show learning process
+        plt.cla()
+        ax.set_title('Regression Analysis at pixel i={},j={}, NN={}, distance={}'.format(i, j, n_neighbors, distance), fontsize=35)
+        ax.set_xlabel('Independent variable', fontsize=24)
+        ax.set_ylabel('Dependent variable', fontsize=24)
+        # ax.set_xlim(-11.0, 11.0)
+        # ax.set_ylim(-0.1, 11000)
+        ax.scatter(conditions[10000:11000, conditionId].numpy(), np.array(responses[10000:11000]), color="blue", alpha=0.2)
+        ax.scatter(conditions[10000:11000, conditionId].numpy(), np.array(regressed[10000:11000]), color='red', alpha=0.3)
+        finish()
+
+    for c in range(5) :
+        fig, ax = plt.subplots(figsize=(16, 10))
+        def saveAndSHowFig():
+            plt.savefig('KNNreg_{}-{}_c{}.png'.format(i,j,c))
+            plt.show()
+        plotAndShowLearningProcess(fig, ax, conditions, responses, predicted, saveAndSHowFig, c)
+
+
+tryKNNRegression()
 #runSomeReview()
 
 
