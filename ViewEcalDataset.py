@@ -9,15 +9,28 @@ import torch
 
 import domain.ecaldata as ED
 from serialization import iogan
+from collections import OrderedDict
 
 # EnergyDeposit = ecal['EnergyDeposit']
 # ParticlePoint = ecal['ParticlePoint']
 # ParticleMomentum = ecal['ParticleMomentum']
 # ParticlePDG=ecal['ParticlePDG']  #here we got only vector with constant 22
 
+#case4 =  [ 1.75761939, -2.4006713 , 16.63603172] , 16.9
+#case3 = [-1.59858634  0.80942614 29.04478182], 29.1
+#case2 = [0.15657315 0.14722511 2.4455745 ], 2.455
+
+#dataset = 'caloGAN_v4_case2_50K' #'caloGAN_v3_case2_50K'#'caloGAN_v3_case4_2K'
 dataset = 'caloGAN_v4_case0_50K' #'caloGAN_v3_case2_50K'#'caloGAN_v3_case4_2K'
 data = ED.parseEcalData(dataset)
 
+
+# size = 8
+#
+# res = OrderedDict()
+# for i in range(0, data.count()):
+#     kv = data.getKeyValued(i)
+#     res.setdefault(kv[0], []).append(kv[1])
 for i in range(1,100) :
     print(data.momentum[i*10], data.point[i*10])
 

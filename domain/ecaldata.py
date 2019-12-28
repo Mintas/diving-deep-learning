@@ -10,6 +10,30 @@ class EcalData :
         self.point = point
         self.title = title
 
+    def count(self):
+        return self.response.shape[0]
+
+    def get(self, i):
+        return (self.response[i], self.momentum[i], self.point[i])
+
+    def getKeyValued(self, i):
+        return (EcalPoint(self.momentum[i], self.point[i]), self.response[i])
+
+class EcalPoint :
+    def __init__(self, momentum, point) -> None:
+        self.momentum = momentum
+        self.point = point
+
+    def __eq__(self, other):
+        return (self.roundM(self.momentum) == self.roundM(other.momentum)).all() \
+               and (self.roundM(self.point) == self.roundM(other.point)).all()
+
+    def __hash__(self):
+        return hash((*self.roundM(self.momentum), *self.roundM(self.point)))
+
+    def roundM(self, m):
+        return np.around(m, decimals=0)
+
 
 def parseEcalData(filename):
     ecal = np.load(dirname(dirname(__file__)) + '/resources/ecaldata/' + filename + '.npz')
