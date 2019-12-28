@@ -131,7 +131,7 @@ def tryKNNRegression():
         plotAndShowLearningProcess(fig, ax, conditions, responses, predicted, saveAndSHowFig, c)
 
 
-tryKNNRegression()
+#tryKNNRegression()
 #runSomeReview()
 
 
