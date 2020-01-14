@@ -135,6 +135,49 @@ def tryKNNRegression():
 #runSomeReview()
 
 
+def runPointedHistograms():
+    #datasetName = 'caloGAN_v4_case2_50K'
+    #indexes = [[15,15,280], [13,13,30], [11,11,7.5], [9,9,5]] #i,j, upperEnergyThreshold
+
+    datasetName = 'caloGAN_v4_case3_10K'
+    indexes = [[15, 15, 1100], [13, 13, 65], [11, 11, 12.5], [9, 9, 10]]  # i,j, upperEnergyThreshold
+
+    ecalData = ed.parseEcalData(datasetName)  # '/Users/mintas/PycharmProjects/untitled1/resources/ecaldata/%s.npz' %
+    energyDeposites = matrixOfEnergyDepositeSamples(ecalData)
+
+    from os.path import dirname
+    import plots.plotUi as PUI
+    import analytics.plotAnalytics as pa
+    import seaborn as sns
+
+    outputfile = dirname(dirname(__file__)) + '/resources/points/' + datasetName + '_PointDistr'
+    plotUi = PUI.PDFPlotUi(outputfile)  # PUI.ShowPlotUi()
+
+
+    def plotPointEnergyDistr():
+        pos = 1
+        histType = 'stepfilled'
+        for ind in indexes:
+            pointNrgs = energyDeposites[ind[0], ind[1]].numpy()
+            pointNrgs = pointNrgs[np.where(pointNrgs < ind[2])]
+
+            plt.subplot(4, 2, pos)
+            sns.distplot(pointNrgs, hist=True, kde=True, bins=100,
+                         hist_kws={'edgecolor': 'black'}, kde_kws={'linewidth': 1})
+            pos = pos + 1
+
+            plt.subplot(4, 2, pos)
+            sns.distplot(pointNrgs, hist=True, kde=False, bins=100,
+                         hist_kws={'edgecolor': 'black', 'log':True}, kde_kws={'linewidth': 1})
+            pos = pos + 1
+
+
+    plotUi.toView(plotPointEnergyDistr)
+    plotUi.close()
+
+
+#runPointedHistograms()
+
 
 
 

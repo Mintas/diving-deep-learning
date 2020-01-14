@@ -128,16 +128,16 @@ def doPlotSparsity(ecalSparsity, alpha, fakeSparsity=None):
     plt.ylabel('Fraction of cells above threshold')
 
 
-def plotEnergies(ecal, logScaled, fake=None, rangeByReal=True, size=30):
+def plotEnergies(ecal, logScaled, fake=None, rangeByReal=True, size=30, histType='bar'):
     plt.suptitle('Energy deposited in {}x{} '.format(size, size), fontsize=16)
     yPostfix = ', LogScale' if logScaled else ''
     commonRange, xPostfix = comonHistRange(ecal, fake, rangeByReal)
 
-    histReal,_,_ = plt.hist(ecal, 100, range=commonRange, log=logScaled, color='red', alpha=0.3)
+    histReal,_,_ = plt.hist(ecal, 100, range=commonRange, log=logScaled, color='red', alpha=0.3, histtype=histType)
     legend = ['Geant']
 
     if fake is not None:
-        histFake,_,_ = plt.hist(fake, 100, range=commonRange, log=logScaled, color='blue', alpha=0.3)
+        histFake,_,_ = plt.hist(fake, 100, range=commonRange, log=logScaled, color='blue', alpha=0.3, histtype=histType)
         if logScaled :
             histFake[histFake == 0] = 1
             histReal[histReal == 0] = 1
