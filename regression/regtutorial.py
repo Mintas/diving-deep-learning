@@ -13,39 +13,42 @@ import domain.ecaldata as ed
 
 torch.manual_seed(1)  # reproducible
 
-BATCH_SIZE = 100
-EPOCH = 100
+BATCH_SIZE = 10
+EPOCH = 300
 i,j=15,15
 
 
-datasetName = 'caloGAN_v4_case0_50K'
-ecalData = ed.parseEcalData(datasetName)  # '/Users/mintas/PycharmProjects/untitled1/resources/ecaldata/%s.npz' %
+#datasetName = 'caloGAN_v4_case0_50K'
+datasetName = 'caloGAN_batch100_2of2'
+#datasetName = 'averaged_' + datasetName
+ecalData = ed.parseEcalData(datasetName, False)  # '/Users/mintas/PycharmProjects/untitled1/resources/ecaldata/%s.npz' %
 energyDeposites = caloreg.matrixOfEnergyDepositeSamples(ecalData)
 conditions = caloreg.buildConditionsBySample(ecalData, withEnergy=False)
 conditions = caloreg.standardizeConditions(conditions) #Zero-mean, Unit-variance
 
 responses = energyDeposites[i, j]
-print('gonna KNN responses')
-responses = torch.tensor(caloreg.knnEnergies(conditions, responses, 1000)) #replace responses with KNN responses, clustering
-print('KNN finished')
+# print('gonna KNN responses')
+# responses = torch.tensor(caloreg.knnEnergies(conditions, responses, 1000)) #replace responses with KNN responses, clustering
+# print('KNN finished')
 
 torch_dataset = Data.TensorDataset(conditions, responses)
 
 # another way to define a network
 net = torch.nn.Sequential(
-    torch.nn.Linear(conditions.size(1), 100),
-    # torch.nn.LeakyReLU(0.2),
+    torch.nn.Linear(conditions.size(1), 10),
+    # torch.nn.LeakyReLU(0.2),  #cnd -> 10 -> 30 -> 1 nice, with 5 too
     # torch.nn.Linear(100, 70),
     # torch.nn.LeakyReLU(0.2),
     # torch.nn.Linear(70, 30),
     torch.nn.Tanh(),
-    torch.nn.Linear(100, 30),
+    torch.nn.Linear(10, 50),
     torch.nn.Tanh(),
-    torch.nn.Linear(30, 1),
+    torch.nn.Linear(50, 1),
 )
 
 optimizer = torch.optim.Adam(net.parameters(), lr=0.01)
-loss_func = torch.nn.MSELoss(reduction='sum')  # this is for regression mean squared loss
+loss_func = torch.nn.MSELoss()  # this is for regression mean squared loss
+#loss_func = torch.nn.L1Loss()  # this is for regression mean squared loss
 
 
 

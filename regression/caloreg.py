@@ -19,8 +19,12 @@ energy = lambda momentum, keepdim: torch.norm(momentum, dim=-1, keepdim=keepdim)
 def buildConditionsBySample(ecaldata, withEnergy):
     momentums = toFloatTensor(ecaldata.momentum)
     arrayOfTensors = [toFloatTensor(ecaldata.point)[..., :2], momentums]
-    if (withEnergy): arrayOfTensors.append(energy(momentums, True))
-    return torch.cat(arrayOfTensors, 1)  # 50k * (x,y,px,py,pz,E0)
+    if (withEnergy):
+        energies = energy(momentums, True)
+        arrayOfTensors.append(energies)
+        arrayOfTensors.append(momentums/energies) #add angles px/E0, py/E0, pz/E0
+
+    return torch.cat(arrayOfTensors, 1)  # 50k * (x,y,px,py,pz,E0, ax, ay, az)
 
 def standardizeConditions(conditions):
     mc = torch.mean(conditions, 0, True)
@@ -42,31 +46,40 @@ def knnEnergies(conditions, nrgs, nn=50):
 
 
 def runSomeReview():
-    datasetName = 'caloGAN_v4_case0_50K'
-    ecalData = ed.parseEcalData(datasetName)  # '/Users/mintas/PycharmProjects/untitled1/resources/ecaldata/%s.npz' %
+    datasetName = 'caloGAN_batch100_1of2'
+    datasetName = 'averaged_' + datasetName
+    ecalData = ed.parseEcalData(datasetName, False)
+    #ed.averageDataset(datasetName)
+
     energyDeposites = matrixOfEnergyDepositeSamples(ecalData)
 
+    # 50k * (x,y,px,py,pz,E0, ax, ay, az)
     conditions = buildConditionsBySample(ecalData, True)
 
     mc = torch.mean(conditions, 0, True)
     ms = torch.std(conditions, 0, True)
-    conditions = standardizeConditions(conditions)  # Zero-mean, Unit-variance
+    #conditions = standardizeConditions(conditions)  # Zero-mean, Unit-variance
 
+    print('conditions and responses : done')
 
+    #scatter SUM for (i,j) on main diag, DIF for (i,j) on countermain; use x*(14.5 - i) + y*(14.5 - j) to weigted plot
     def scatterHtml(z, zTitle, markers, filename):
-        fig1 = go.Scatter3d(x=conditions[:, 0],
-                            y=conditions[:, 1],
+        fig1 = go.Scatter3d(x=conditions[:, 0] * (14.5-7) + conditions[:, 1] * (14.5-15), #x=conditions[:, 6],#x=conditions[:, 0],
+                            y=conditions[:, 6] * (14.5-7) + conditions[:, 7] * (14.5-15),#y=conditions[:, 1],
                             z=z,
                             marker=dict(color=markers,
                                         opacity=1,
                                         reversescale=True,
                                         colorscale='Blues',
+                                        colorbar=dict(
+                                            title="Colorbar"
+                                        ),
                                         size=5),
                             line=dict(width=0.02),
                             mode='markers')
         # Создаём layout
-        mylayout = go.Layout(scene=dict(xaxis=dict(title="Xcoord"),
-                                        yaxis=dict(title="Ycoord"),
+        mylayout = go.Layout(scene=dict(xaxis=dict(title="x - y"),#"Xcoord"),
+                                        yaxis=dict(title="(Px - Py)/E0"),#"Ycoord"),
                                         zaxis=dict(title=zTitle)), )
         # Строим диаграмму и сохраняем HTML
         plotly.offline.plot({"data": [fig1],
@@ -75,11 +88,13 @@ def runSomeReview():
                             filename=(filename))
 
     # Создаём figure
-    i, j = 15, 15
+    i, j = 7, 15
     # 'Deposit'
     #scatterHtml(energyDeposites[i, j], "E0", conditions[:, 5], "StandardizedE0byDeposit_{}_{}.html".format(i, j))
-    energies = knnEnergies(conditions, energyDeposites[i, j], 1000)
-    scatterHtml(conditions[:, 5], "E0", torch.tensor(energies), "E0_KNN_{}_{}.html".format(i, j))
+    #energies = knnEnergies(conditions, energyDeposites[i, j], 100)
+    energies = energyDeposites[i, j]
+    scatterHtml(conditions[:, 5], "E0", torch.tensor(energies), "{}_2difxy_difPxPy_E0_by100_{}_{}.html".format(datasetName,i, j))
+    #scatterHtml(conditions[:, 5], "E0", torch.tensor(energies), "{}_PxPyE0_by100_{}_{}.html".format(datasetName,i, j))
 
 
 import matplotlib.pyplot as plt

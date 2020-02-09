@@ -43,7 +43,7 @@ def plotResponses(ecalData, logScale=True, fakeData = None, suptitle=None, sheet
     start = (sheets - 1)*step
     finish = start + step
 
-    combined = np.concatenate((ecalData.response[start:finish], fakeData.response[start:finish])) if fakeData is not None else ecalData.response[start:finish]
+    combined = np.concatenate((ecalData.response[start:finish:100], fakeData.response[start:finish:100])) if fakeData is not None else ecalData.response[start:finish:100]
     if logScale: combined = np.log10(combined)
     vmin, vmax = np.amin(np.ma.masked_invalid(combined)), np.amax(combined)
 

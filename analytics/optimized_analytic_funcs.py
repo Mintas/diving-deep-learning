@@ -136,17 +136,21 @@ def optimized_analityc(ecalData, imgsize) :
     nrgy = EnergyResponseAccumulator()
     clusterShape = ClusterShapeAccumulator(imgsize)
 
+    p, point, x0, y0, lfOrthog, lfNotOrthog = ([], [], 0, 0, None, None)
+
     for i in range(len(response)) :
         img = response[i]
-        p = momentum[i]
-        point = points[i]
 
-        sumImg = np.sum(img)
+        if (i % 100 == 0) :
+            p = momentum[i]
+            point = points[i]
 
-        x0, y0 = AF.rotate(p, point)
+            sumImg = np.sum(img)
 
-        lfOrthog = AF.doLineFunc(True, p, x0, y0)
-        lfNotOrthog = AF.doLineFunc(False, p, x0, y0)
+            x0, y0 = AF.rotate(p, point)
+
+            lfOrthog = AF.doLineFunc(True, p, x0, y0)
+            lfNotOrthog = AF.doLineFunc(False, p, x0, y0)
 
         nrgy.append(p, sumImg)
         clusterShape.append(img, sumImg)

@@ -49,7 +49,7 @@ class Trainer(object):
                 #real = [data[0].to(self.device), data[1].to(self.device)]
                 real = [d.to(self.device) for d in data]
                 if not savedNoise :
-                    fixed_noise.append(real[1][:fixedNoiseCount])
+                    fixed_noise.append(real[1][:fixedNoiseCount:100]) # take every 100th sample
 
                 fake = [Gen([self.noise(), real[1]]) for i in range(0, self.ganLoss.needFakes)] #real[1] stands for condition
                 D_G_z1, D_x, errD = self.trainDiscriminator(Dis, Dis_optimizer, real, fake)
