@@ -23,8 +23,11 @@ from collections import OrderedDict
 #dataset = 'caloGAN_v4_case2_50K' #'caloGAN_v3_case2_50K'#'caloGAN_v3_case4_2K'
 #ecal = torch.load('/Users/mintas/Downloads/caloGAN_batch100_1of2_cLinearDeep_WGAN.pth', map_location='cpu')
 
-dataset = 'caloGAN_v4_case0_50K' #'caloGAN_v3_case2_50K'#'caloGAN_v3_case4_2K'
+dataset = 'caloGAN_batch100_1of2' #'caloGAN_v3_case2_50K'#'caloGAN_v3_case4_2K'
 data = ED.parseEcalData(dataset)
+data.response = np.squeeze(data.response, -1)
+ecalStatsPath = '/Users/mintas/' + dataset + '_stats' + '.pth'
+torch.save(OAF.optimized_analityc(data, 30), ecalStatsPath)
 
 
 # size = 8
