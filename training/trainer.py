@@ -29,7 +29,7 @@ class Trainer(object):
 
     def tryLoadPrecomputed(self, Dis, Gen, Dopt, Gopt):
         if not iogan.isFilePresent(self.path): return 0, None
-        e, self.D_losses, self.G_losses, fixedNoise = iogan.loadGAN(Dis, Dopt, Gen, Gopt, self.path)
+        e, self.D_losses, self.G_losses, fixedNoise = iogan.loadGAN(Dis, Dopt, Gen, Gopt, self.path, device=self.device)
         print('loaded precomputed gans')
         return e, fixedNoise
 

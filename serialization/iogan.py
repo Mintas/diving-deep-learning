@@ -34,8 +34,8 @@ def saveGAN(epoch, fixedNoise, D, Dopt, Dloss, G, Gopt, Gloss, PATH):
     print('!!!!!! Models have been saved successfully !!!!!')
 
 
-def loadGAN(D, Dopt, G, Gopt, PATH):
-    checkpoint = torch.load(PATH + EXTENSION)
+def loadGAN(D, Dopt, G, Gopt, PATH, device='cpu'):
+    checkpoint = torch.load(PATH + EXTENSION, map_location=device)
 
     D.load_state_dict(checkpoint[IOGANConst.D])
     G.load_state_dict(checkpoint[IOGANConst.G])
