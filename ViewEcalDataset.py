@@ -21,6 +21,8 @@ from collections import OrderedDict
 #case2 = [0.15657315 0.14722511 2.4455745 ], 2.455
 
 #dataset = 'caloGAN_v4_case2_50K' #'caloGAN_v3_case2_50K'#'caloGAN_v3_case4_2K'
+#ecal = torch.load('/Users/mintas/Downloads/caloGAN_batch100_1of2_cLinearDeep_WGAN.pth', map_location='cpu')
+
 dataset = 'caloGAN_v4_case0_50K' #'caloGAN_v3_case2_50K'#'caloGAN_v3_case4_2K'
 data = ED.parseEcalData(dataset)
 

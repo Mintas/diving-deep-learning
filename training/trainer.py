@@ -39,7 +39,7 @@ class Trainer(object):
         Gen_optimizer = self.initOptimizer(Gen.parameters(), hyperParams)
         computedEpochs, savedNoise = self.tryLoadPrecomputed(Dis, Gen, Dis_optimizer, Gen_optimizer)
 
-        fixed_noise = savedNoise if savedNoise is not None else [self.noise(fixedNoiseCount)]
+        fixed_noise = savedNoise if savedNoise is not None else [self.noise(fixedNoiseCount), []]
         datasetLength = len(dataLoader)
 
         iters = 0
@@ -49,7 +49,7 @@ class Trainer(object):
                 #real = [data[0].to(self.device), data[1].to(self.device)]
                 real = [d.to(self.device) for d in data]
                 if not savedNoise :
-                    fixed_noise.append(real[1][:fixedNoiseCount:100]) # take every 100th sample
+                    fixed_noise[1] = real[1][:fixedNoiseCount]
 
                 fake = [Gen([self.noise(), real[1]]) for i in range(0, self.ganLoss.needFakes)] #real[1] stands for condition
                 D_G_z1, D_x, errD = self.trainDiscriminator(Dis, Dis_optimizer, real, fake)

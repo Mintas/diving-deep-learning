@@ -152,6 +152,9 @@ def optimized_analityc(ecalData, imgsize) :
             lfOrthog = AF.doLineFunc(True, p, x0, y0)
             lfNotOrthog = AF.doLineFunc(False, p, x0, y0)
 
+            if (i % 10000 == 0) :
+                print('stats processed {}'.format(i))
+
         nrgy.append(p, sumImg)
         clusterShape.append(img, sumImg)
         assym.append(p, img, lfOrthog, lfNotOrthog, sumImg)
@@ -218,6 +221,8 @@ def runAnalytics(filename, ecalData, fakeData=None, ecalStats=None, fakeStats=No
     if haveFake and fakeStats is None:
         fakeStats = optimized_analityc(fakeData, imgSize)
 
+    print('Stats COMPUTED !!!')
+
     plotUi.toView(lambda: plotResponses(ecalData, True, fakeData))
     plotUi.toView(lambda: plotResponses(ecalData, False, fakeData))
 
@@ -238,13 +243,18 @@ def runAnalytics(filename, ecalData, fakeData=None, ecalStats=None, fakeStats=No
         if haveFake : position = runSubplot(func, type, position, True, range=False)
 
     plotUi.toView(lambda: runPlotLayoutSublots(AccumEnum.ASSYMETRY, doPlotAssymetry))
+    print('ASSYMETRY plotted !!!')
+
     plotUi.toView(lambda: runPlotLayoutSublots(AccumEnum.WIDTH, doPlotShowerWidth))
+    print('WIDTH plotted !!!')
 
 
     es = ecalStats.get(AccumEnum.SPARSITY, True)
     plotUi.toView(lambda: doPlotSparsity(es, ecalStats.get(AccumEnum.SPARSITY, False), fakeStats.get(AccumEnum.SPARSITY, True) if haveFake else None))
+    print('SPARSITY plotted !!!')
 
     plotUi.toView(lambda: runPlotLayoutSublots(AccumEnum.ENERGY, lambda e, o, f, r: plotEnergies(e, o, f, r, imgSize)))
+    print('ENERGY plotted !!!')
 
     def doPlotCS(ecal, logScaled, fake, allPoints, cropSize):
         plt.suptitle('Cluster Shape E_c/E_total for c={}x{} '.format(cropSize, cropSize), fontsize=16)
@@ -262,6 +272,8 @@ def runAnalytics(filename, ecalData, fakeData=None, ecalStats=None, fakeStats=No
 
     for crop in ecalStats.get(AccumEnum.CLUSTER_SHAPE, True):
         plotUi.toView(lambda: runPlotClusterShapeStatistics(crop))
+
+    print('PLOTUI is gonna get closed now!!!')
 
     plotUi.close()
     return ecalStats, fakeStats
