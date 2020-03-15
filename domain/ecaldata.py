@@ -81,3 +81,19 @@ def averageDataset(datasetName, avgCnt=100):
                         EnergyDeposit=ecalData.response,  # 30х30 матрица откликов,
                         ParticlePoint=ecalData.point,  # компоненты координат, трехмерные
                         ParticleMomentum=ecalData.momentum)  # компоненты импульса частицы, трехмерные
+
+def joinDatasets(ds1, ds2):
+    ed1 = parseEcalData(ds1)  # '/Users/mintas/PycharmProjects/untitled1/resources/ecaldata/%s.npz' %
+    ed2 = parseEcalData(ds2)
+
+    title = "joined_{}_and_{}".format(ds1, ds2)
+    ecalData = EcalData(np.array([]), np.array([]), np.array([]), title)
+    ecalData.response = np.concatenate((ed1.response, ed2.response))
+    ecalData.momentum = np.concatenate((ed1.momentum, ed2.momentum))
+    ecalData.point = np.concatenate((ed1.point, ed2.point))
+
+    np.savez_compressed(title,
+                        EnergyDeposit=ecalData.response,  # 30х30 матрица откликов,
+                        ParticlePoint=ecalData.point,  # компоненты координат, трехмерные
+                        ParticleMomentum=ecalData.momentum)
+    return ecalData

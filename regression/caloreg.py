@@ -194,7 +194,13 @@ def runPointedHistograms():
 #runPointedHistograms()
 
 
+def doJoinDataSets():
+    datasetName = 'caloGAN_v4_case3_10K'
+    datasetName = 'averaged_' + datasetName
 
+    ecalData = ed.joinDatasets('caloGAN_v4_case3_10K', 'caloGAN_v4_case4_10K')
+    print('yay')
+    #ed.averageDataset(datasetName)
 
-
+#doJoinDataSets()
 
