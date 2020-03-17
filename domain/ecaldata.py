@@ -83,8 +83,8 @@ def averageDataset(datasetName, avgCnt=100):
                         ParticleMomentum=ecalData.momentum)  # компоненты импульса частицы, трехмерные
 
 def joinDatasets(ds1, ds2):
-    ed1 = parseEcalData(ds1)  # '/Users/mintas/PycharmProjects/untitled1/resources/ecaldata/%s.npz' %
-    ed2 = parseEcalData(ds2)
+    ed1 = parseEcalData(ds1, False)  # '/Users/mintas/PycharmProjects/untitled1/resources/ecaldata/%s.npz' %
+    ed2 = parseEcalData(ds2, False)
 
     title = "joined_{}_and_{}".format(ds1, ds2)
     ecalData = EcalData(np.array([]), np.array([]), np.array([]), title)

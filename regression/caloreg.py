@@ -198,7 +198,7 @@ def doJoinDataSets():
     datasetName = 'caloGAN_v4_case3_10K'
     datasetName = 'averaged_' + datasetName
 
-    ecalData = ed.joinDatasets('caloGAN_v4_case3_10K', 'caloGAN_v4_case4_10K')
+    ecalData = ed.joinDatasets('joined_v4_3_10K_4_10K', '2_50K_5_10K')
     print('yay')
     #ed.averageDataset(datasetName)
 

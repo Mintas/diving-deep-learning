@@ -203,7 +203,7 @@ def runPlotMeans(ecalData, fakeData, haveFake, plotUi):
         plotUi.toView(lambda: plotMeanWithTitle(ecalData.response, ecalData.title))
 
 
-def runAnalytics(filename, ecalData, fakeData=None, ecalStats=None, fakeStats=None):
+def runAnalytics(filename, ecalData, fakeData=None, ecalStats=None, fakeStats=None, plotShape=True):
     print(ecalData.title)
     matplotlib.rcParams.update({'font.size': 13})
 
@@ -262,16 +262,19 @@ def runAnalytics(filename, ecalData, fakeData=None, ecalStats=None, fakeStats=No
                         fakeStats.get(AccumEnum.ENERGY) if haveFake else None,
                         fake if haveFake else None, allPoints)
 
-    def runPlotClusterShapeStatistics(crop):
-        runPlotLayoutSublots(AccumEnum.CLUSTER_SHAPE,
+    if plotShape :
+        print('Gonna plot SHAPE !!!')
+        def runPlotClusterShapeStatistics(crop):
+            runPlotLayoutSublots(AccumEnum.CLUSTER_SHAPE,
                              lambda e, o, f, r: doPlotCS(e.get(crop), o, f.get(crop) if haveFake else None, r, crop))
-        plotUi.show()
-        plotUi.figure()
-        runPlotLayoutSublots(AccumEnum.CLUSTER_SHAPE,
+            plotUi.show()
+            plotUi.figure()
+            runPlotLayoutSublots(AccumEnum.CLUSTER_SHAPE,
                              lambda e, o, f, r: plotEnergies(e.get(crop), o, f.get(crop) if haveFake else None, r, crop))
 
-    for crop in ecalStats.get(AccumEnum.CLUSTER_SHAPE, True):
-        plotUi.toView(lambda: runPlotClusterShapeStatistics(crop))
+        for crop in ecalStats.get(AccumEnum.CLUSTER_SHAPE, True):
+            plotUi.toView(lambda: runPlotClusterShapeStatistics(crop))
+            print('SHAPE plotted crop = {} !!!'.format(crop))
 
     print('PLOTUI is gonna get closed now!!!')
 
